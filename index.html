@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V2</title>
+<title>Smart Money AI Scanner V3 PRO</title>
 
 <style>
 
@@ -15,14 +15,14 @@ body{
 }
 
 .container{
-    max-width:1000px;
+    max-width:1100px;
     margin:auto;
     padding:20px;
 }
 
 .title{
     text-align:center;
-    font-size:46px;
+    font-size:48px;
     margin-top:20px;
 }
 
@@ -41,25 +41,25 @@ body{
 
 .card{
     background:#111827;
-    padding:22px;
+    padding:24px;
     border-radius:20px;
     margin-bottom:22px;
     border-left:7px solid #10b981;
 }
 
 .coin{
-    font-size:32px;
+    font-size:34px;
     font-weight:bold;
 }
 
 .signal{
     margin-top:12px;
-    font-size:20px;
+    font-size:21px;
     color:#22c55e;
 }
 
 .stats{
-    margin-top:16px;
+    margin-top:18px;
     line-height:2;
     color:#cbd5e1;
     font-size:18px;
@@ -82,7 +82,7 @@ body{
     font-size:16px;
 }
 
-.confidence{
+.conf{
     margin-top:10px;
     color:#facc15;
     font-size:16px;
@@ -96,15 +96,15 @@ body{
 <div class="container">
 
 <div class="title">
-🧠 Smart Money AI Scanner V2
+🧠 Smart Money AI Scanner V3 PRO
 </div>
 
 <div class="sub">
-Advanced Early Pump & Whale Flow Detector
+Realtime Whale Flow + Futures Intelligence
 </div>
 
 <div class="live">
-🟢 LIVE BINANCE FUTURES AI
+🟢 LIVE BINANCE FUTURES AI ENGINE
 </div>
 
 <div id="market"></div>
@@ -115,16 +115,23 @@ Advanced Early Pump & Whale Flow Detector
 
 async function loadData(){
 
-const response =
+const tickerRes =
 await fetch(
 'https://fapi.binance.com/fapi/v1/ticker/24hr'
 );
 
-const data =
-await response.json();
+const oiRes =
+await fetch(
+'https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=1'
+);
+
+const tickers =
+await tickerRes.json();
+
+let html = '';
 
 const filtered =
-data
+tickers
 .filter(c =>
 c.symbol.endsWith('USDT')
 )
@@ -145,8 +152,8 @@ let ai = 0;
 if(volume > 100000000)
 ai += 30;
 
-if(change > 1 && change < 5)
-ai += 30;
+if(change > 1 && change < 6)
+ai += 25;
 
 if(count > 120000)
 ai += 20;
@@ -155,39 +162,39 @@ if(change < 8)
 ai += 10;
 
 if(volume/count > 500)
-ai += 10;
+ai += 15;
 
 let signal =
 '👀 WATCH';
 
 let analysis =
-'Momentum mulai terbentuk';
+'Momentum mulai aktif';
 
-let confidence =
-'Medium';
+let conf =
+'MEDIUM';
 
-if(ai > 90){
+if(ai > 92){
 
 signal =
 '🚀 STRONG SMART MONEY';
 
 analysis =
-'Whale accumulation + futures flow sangat kuat';
+'Whale accumulation + futures activity sangat kuat';
 
-confidence =
+conf =
 'VERY HIGH';
 
 }
 
-else if(ai > 80){
+else if(ai > 82){
 
 signal =
 '🔥 EARLY ACCUMULATION';
 
 analysis =
-'Smart money kemungkinan mulai positioning';
+'Kemungkinan smart money positioning';
 
-confidence =
+conf =
 'HIGH';
 
 }
@@ -198,9 +205,9 @@ signal =
 '⚡ BREAKOUT WATCH';
 
 analysis =
-'Momentum mulai aktif';
+'Momentum mulai terbentuk';
 
-confidence =
+conf =
 'MEDIUM';
 
 }
@@ -211,9 +218,9 @@ signal =
 '⚠️ POSSIBLE OVERPUMP';
 
 analysis =
-'Kemungkinan sudah telat entry';
+'Kemungkinan telat entry / rawan dump';
 
-confidence =
+conf =
 'LOW';
 
 ai -= 20;
@@ -229,14 +236,14 @@ count:count,
 ai:ai,
 signal:signal,
 analysis:analysis,
-confidence:confidence
+conf:conf
 
 };
 
 })
 
 .filter(c =>
-c.ai >= 60
+c.ai >= 70
 )
 
 .sort((a,b) =>
@@ -244,8 +251,6 @@ b.ai - a.ai
 )
 
 .slice(0,10);
-
-let html = '';
 
 filtered.forEach(c => {
 
@@ -289,9 +294,9 @@ ${Math.floor(c.count)} trades
 🧠 AI Analysis:
 ${c.analysis}
 
-<div class="confidence">
+<div class="conf">
 ⭐ Confidence:
-${c.confidence}
+${c.conf}
 </div>
 
 </div>
