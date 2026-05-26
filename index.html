@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Realtime Whale Tracker</title>
+<title>Early Pump Detector</title>
 
 <style>
 
@@ -32,6 +32,13 @@ body{
     margin-bottom:30px;
 }
 
+.live{
+    text-align:center;
+    color:#22c55e;
+    margin-bottom:25px;
+    font-size:18px;
+}
+
 .card{
     background:#111827;
     padding:20px;
@@ -41,27 +48,29 @@ body{
 }
 
 .coin{
-    font-size:28px;
+    font-size:30px;
     font-weight:bold;
 }
 
 .signal{
     margin-top:10px;
-    font-size:18px;
+    font-size:20px;
     color:#22c55e;
 }
 
 .stats{
     margin-top:15px;
-    line-height:1.8;
+    line-height:1.9;
     color:#cbd5e1;
+    font-size:18px;
 }
 
-.live{
-    text-align:center;
-    color:#22c55e;
-    margin-bottom:20px;
-    font-size:18px;
+.rank{
+    float:right;
+    background:#10b981;
+    padding:8px 14px;
+    border-radius:999px;
+    font-size:14px;
 }
 
 </style>
@@ -72,15 +81,15 @@ body{
 <div class="container">
 
 <div class="title">
-🐋 Realtime Whale Tracker
+🚀 Early Pump Detector
 </div>
 
 <div class="sub">
-Live Binance Futures Scanner
+Detect coin sebelum breakout besar
 </div>
 
 <div class="live">
-🟢 LIVE DATA
+🟢 LIVE BINANCE FUTURES
 </div>
 
 <div id="market"></div>
@@ -99,46 +108,83 @@ await fetch(
 const data =
 await response.json();
 
-const top =
+const filtered =
 data
 .filter(c =>
 c.symbol.endsWith('USDT')
 )
+.map(c => {
+
+const volume =
+parseFloat(c.quoteVolume);
+
+const change =
+parseFloat(c.priceChangePercent);
+
+const count =
+parseFloat(c.count);
+
+let score = 0;
+
+if(volume > 50000000)
+score += 40;
+
+if(change > 1 && change < 8)
+score += 35;
+
+if(count > 100000)
+score += 25;
+
+return {
+
+symbol:c.symbol,
+change:change,
+volume:volume,
+count:count,
+score:score
+
+};
+
+})
+.filter(c =>
+c.score >= 60
+)
 .sort((a,b) =>
-parseFloat(b.quoteVolume) -
-parseFloat(a.quoteVolume)
+b.score - a.score
 )
 .slice(0,10);
 
 let html = '';
 
-top.forEach(c => {
+filtered.forEach(c => {
 
 const volume =
-(parseFloat(c.quoteVolume)/1000000)
+(c.volume/1000000)
 .toFixed(0);
 
-const change =
-parseFloat(c.priceChangePercent)
-.toFixed(2);
+let signal =
+'👀 EARLY FLOW';
 
-let signal = '⚠️ WATCH';
+if(c.score > 90)
+signal =
+'🚀 STRONG EARLY PUMP';
 
-if(change > 8)
-signal = '🚀 STRONG BUY';
-
-else if(change > 3)
-signal = '🔥 BULLISH';
-
-else if(change < -5)
-signal = '❌ BEARISH';
+else if(c.score > 75)
+signal =
+'🔥 SMART MONEY ENTRY';
 
 html += `
 
 <div class="card">
 
 <div class="coin">
+
 ${c.symbol}
+
+<span class="rank">
+${c.score}/100
+</span>
+
 </div>
 
 <div class="signal">
@@ -147,9 +193,14 @@ ${signal}
 
 <div class="stats">
 
-📈 24H Change: ${change}%<br>
+📈 Price Change:
+${c.change.toFixed(2)}%<br>
 
-💰 Volume: $${volume}M
+💰 Futures Volume:
+$${volume}M<br>
+
+⚡ Activity:
+${Math.floor(c.count)} trades
 
 </div>
 
@@ -166,7 +217,7 @@ document.getElementById('market')
 
 loadData();
 
-setInterval(loadData, 10000);
+setInterval(loadData, 5000);
 
 </script>
 
