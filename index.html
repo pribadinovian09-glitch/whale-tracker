@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Early Pump Detector</title>
+<title>Smart Money AI Scanner</title>
 
 <style>
 
@@ -15,14 +15,14 @@ body{
 }
 
 .container{
-    max-width:900px;
+    max-width:1000px;
     margin:auto;
     padding:20px;
 }
 
 .title{
     text-align:center;
-    font-size:42px;
+    font-size:46px;
     margin-top:20px;
 }
 
@@ -41,26 +41,26 @@ body{
 
 .card{
     background:#111827;
-    padding:20px;
-    border-radius:18px;
-    margin-bottom:20px;
-    border-left:6px solid #10b981;
+    padding:22px;
+    border-radius:20px;
+    margin-bottom:22px;
+    border-left:7px solid #10b981;
 }
 
 .coin{
-    font-size:30px;
+    font-size:32px;
     font-weight:bold;
 }
 
 .signal{
-    margin-top:10px;
+    margin-top:12px;
     font-size:20px;
     color:#22c55e;
 }
 
 .stats{
-    margin-top:15px;
-    line-height:1.9;
+    margin-top:16px;
+    line-height:2;
     color:#cbd5e1;
     font-size:18px;
 }
@@ -73,6 +73,15 @@ body{
     font-size:14px;
 }
 
+.ai{
+    margin-top:12px;
+    background:#0f172a;
+    padding:14px;
+    border-radius:14px;
+    color:#38bdf8;
+    font-size:16px;
+}
+
 </style>
 </head>
 
@@ -81,15 +90,15 @@ body{
 <div class="container">
 
 <div class="title">
-🚀 Early Pump Detector
+🧠 Smart Money AI Scanner
 </div>
 
 <div class="sub">
-Detect coin sebelum breakout besar
+Realtime Binance Futures Smart Flow Detector
 </div>
 
 <div class="live">
-🟢 LIVE BINANCE FUTURES
+🟢 LIVE AI MARKET SCAN
 </div>
 
 <div id="market"></div>
@@ -113,6 +122,7 @@ data
 .filter(c =>
 c.symbol.endsWith('USDT')
 )
+
 .map(c => {
 
 const volume =
@@ -124,16 +134,55 @@ parseFloat(c.priceChangePercent);
 const count =
 parseFloat(c.count);
 
-let score = 0;
+let ai = 0;
 
-if(volume > 50000000)
-score += 40;
+if(volume > 100000000)
+ai += 35;
 
-if(change > 1 && change < 8)
-score += 35;
+if(change > 1 && change < 6)
+ai += 30;
 
-if(count > 100000)
-score += 25;
+if(count > 120000)
+ai += 20;
+
+if(change < 12)
+ai += 15;
+
+let signal =
+'👀 WATCH';
+
+let analysis =
+'Market mulai aktif';
+
+if(ai > 90){
+
+signal =
+'🚀 STRONG SMART MONEY';
+
+analysis =
+'Whale flow kuat + futures activity tinggi';
+
+}
+
+else if(ai > 75){
+
+signal =
+'🔥 EARLY ACCUMULATION';
+
+analysis =
+'Kemungkinan smart money mulai masuk';
+
+}
+
+else if(ai > 60){
+
+signal =
+'⚡ BREAKOUT WATCH';
+
+analysis =
+'Momentum mulai terbentuk';
+
+}
 
 return {
 
@@ -141,17 +190,22 @@ symbol:c.symbol,
 change:change,
 volume:volume,
 count:count,
-score:score
+ai:ai,
+signal:signal,
+analysis:analysis
 
 };
 
 })
+
 .filter(c =>
-c.score >= 60
+c.ai >= 60
 )
+
 .sort((a,b) =>
-b.score - a.score
+b.ai - a.ai
 )
+
 .slice(0,10);
 
 let html = '';
@@ -162,17 +216,6 @@ const volume =
 (c.volume/1000000)
 .toFixed(0);
 
-let signal =
-'👀 EARLY FLOW';
-
-if(c.score > 90)
-signal =
-'🚀 STRONG EARLY PUMP';
-
-else if(c.score > 75)
-signal =
-'🔥 SMART MONEY ENTRY';
-
 html += `
 
 <div class="card">
@@ -182,25 +225,32 @@ html += `
 ${c.symbol}
 
 <span class="rank">
-${c.score}/100
+AI ${c.ai}/100
 </span>
 
 </div>
 
 <div class="signal">
-${signal}
+${c.signal}
 </div>
 
 <div class="stats">
 
-📈 Price Change:
+📈 24H Change:
 ${c.change.toFixed(2)}%<br>
 
 💰 Futures Volume:
 $${volume}M<br>
 
-⚡ Activity:
+⚡ Trade Activity:
 ${Math.floor(c.count)} trades
+
+</div>
+
+<div class="ai">
+
+🧠 AI Analysis:
+${c.analysis}
 
 </div>
 
