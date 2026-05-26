@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner</title>
+<title>Smart Money AI Scanner V2</title>
 
 <style>
 
@@ -74,11 +74,17 @@ body{
 }
 
 .ai{
-    margin-top:12px;
+    margin-top:14px;
     background:#0f172a;
     padding:14px;
     border-radius:14px;
     color:#38bdf8;
+    font-size:16px;
+}
+
+.confidence{
+    margin-top:10px;
+    color:#facc15;
     font-size:16px;
 }
 
@@ -90,15 +96,15 @@ body{
 <div class="container">
 
 <div class="title">
-🧠 Smart Money AI Scanner
+🧠 Smart Money AI Scanner V2
 </div>
 
 <div class="sub">
-Realtime Binance Futures Smart Flow Detector
+Advanced Early Pump & Whale Flow Detector
 </div>
 
 <div class="live">
-🟢 LIVE AI MARKET SCAN
+🟢 LIVE BINANCE FUTURES AI
 </div>
 
 <div id="market"></div>
@@ -137,22 +143,28 @@ parseFloat(c.count);
 let ai = 0;
 
 if(volume > 100000000)
-ai += 35;
+ai += 30;
 
-if(change > 1 && change < 6)
+if(change > 1 && change < 5)
 ai += 30;
 
 if(count > 120000)
 ai += 20;
 
-if(change < 12)
-ai += 15;
+if(change < 8)
+ai += 10;
+
+if(volume/count > 500)
+ai += 10;
 
 let signal =
 '👀 WATCH';
 
 let analysis =
-'Market mulai aktif';
+'Momentum mulai terbentuk';
+
+let confidence =
+'Medium';
 
 if(ai > 90){
 
@@ -160,27 +172,51 @@ signal =
 '🚀 STRONG SMART MONEY';
 
 analysis =
-'Whale flow kuat + futures activity tinggi';
+'Whale accumulation + futures flow sangat kuat';
+
+confidence =
+'VERY HIGH';
 
 }
 
-else if(ai > 75){
+else if(ai > 80){
 
 signal =
 '🔥 EARLY ACCUMULATION';
 
 analysis =
-'Kemungkinan smart money mulai masuk';
+'Smart money kemungkinan mulai positioning';
+
+confidence =
+'HIGH';
 
 }
 
-else if(ai > 60){
+else if(ai > 70){
 
 signal =
 '⚡ BREAKOUT WATCH';
 
 analysis =
-'Momentum mulai terbentuk';
+'Momentum mulai aktif';
+
+confidence =
+'MEDIUM';
+
+}
+
+if(change > 12){
+
+signal =
+'⚠️ POSSIBLE OVERPUMP';
+
+analysis =
+'Kemungkinan sudah telat entry';
+
+confidence =
+'LOW';
+
+ai -= 20;
 
 }
 
@@ -192,7 +228,8 @@ volume:volume,
 count:count,
 ai:ai,
 signal:signal,
-analysis:analysis
+analysis:analysis,
+confidence:confidence
 
 };
 
@@ -251,6 +288,11 @@ ${Math.floor(c.count)} trades
 
 🧠 AI Analysis:
 ${c.analysis}
+
+<div class="confidence">
+⭐ Confidence:
+${c.confidence}
+</div>
 
 </div>
 
