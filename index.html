@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V9</title>
+<title>Smart Money AI Scanner V9.1</title>
 
 <style>
 body{
@@ -90,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V9</div>
-<div class="sub">Trading System Engine (Entry + Risk + Probability)</div>
-<div class="live">🟢 LIVE INSTITUTIONAL FLOW</div>
+<div class="title">🧠 Smart Money AI Scanner V9.1</div>
+<div class="sub">Stable Version - Always Shows Market Flow</div>
+<div class="live">🟢 LIVE FUTURES SCANNER</div>
 
 <div id="market"></div>
 
@@ -107,7 +107,7 @@ const data = await res.json();
 
 let html = '';
 
-const filtered = data
+const all = data
 .filter(c => c.symbol.endsWith('USDT'))
 .map(c => {
 
@@ -120,128 +120,91 @@ const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
 /* =========================
-   MULTI TIMEFRAME BIAS (PROXY)
+   TREND
 ========================= */
 let tf = "NEUTRAL";
 
-if(change > 4) tf = "BULLISH";
-if(change < -4) tf = "BEARISH";
+if(change > 3) tf = "BULLISH";
+if(change < -3) tf = "BEARISH";
 
 /* =========================
-   STRUCTURE QUALITY
+   CORE SCORE
 ========================= */
 let structure = 0;
 
-if(change > 1 && change < 5) structure += 25;
 if(volume > 200000000) structure += 25;
-if(volume > 400000000) structure += 15;
+if(change > 1 && change < 5) structure += 20;
 if(count > 120000) structure += 10;
 
 /* =========================
-   LIQUIDITY ZONES (CLUSTER)
+   ZONE
 ========================= */
 const range = high - low;
 
-const demandLow = low;
-const demandHigh = low + range * 0.22;
-
-const supplyHigh = high;
-const supplyLow = high - range * 0.22;
+const demand = low + range * 0.2;
+const supply = high - range * 0.2;
 
 let zone = "MID";
 
-if(price <= demandHigh) zone = "DEMAND ZONE";
-if(price >= supplyLow) zone = "SUPPLY ZONE";
+if(price <= demand) zone = "DEMAND";
+if(price >= supply) zone = "SUPPLY";
 
 /* =========================
-   LIQUIDITY SWEEP (REALISTIC)
+   BREAKOUT / SWEEP
 ========================= */
-let sweep = false;
-
-if(price < low * 1.02 && change < 0) sweep = true;
-if(price > high * 0.98 && change > 0) sweep = true;
+let breakout = price > high * 0.995 && volume > 200000000;
+let sweep = price < low * 1.02 && change < 0;
 
 /* =========================
-   BREAKOUT CONFIRMATION
-========================= */
-let breakout = false;
-
-if(price > high * 0.995 && volume > 250000000){
-    breakout = true;
-    structure += 30;
-}
-
-/* =========================
-   RISK ENGINE
+   RISK
 ========================= */
 let risk = 0;
 
 if(change > 8 || change < -8) risk += 30;
-if(volume < 80000000 && change > 4) risk += 20;
-if(tf === "BEARISH" && change > 4) risk += 25;
-if(zone === "SUPPLY ZONE" && change > 0) risk += 15;
+if(volume < 80000000) risk += 20;
+if(tf === "BEARISH" && change > 3) risk += 25;
+if(zone === "SUPPLY" && change > 0) risk += 15;
 
 /* =========================
-   PROBABILITY ENGINE (0–1000)
+   PROBABILITY
 ========================= */
 let probability = 0;
 
 probability += structure * 3;
-if(breakout) probability += 150;
+if(breakout) probability += 120;
 if(sweep) probability += 80;
-if(tf === "BULLISH") probability += 100;
-if(zone === "DEMAND ZONE") probability += 100;
+if(tf === "BULLISH") probability += 80;
+if(zone === "DEMAND") probability += 80;
 
 probability -= risk * 2;
 
 /* =========================
-   ENTRY ZONE ENGINE
+   CATEGORY SYSTEM (FIX)
 ========================= */
-let entry = "WAIT";
-
-let buyLow = (price * 0.98).toFixed(6);
-let buyHigh = (price * 1.01).toFixed(6);
-
-let sellLow = (price * 0.99).toFixed(6);
-let sellHigh = (price * 1.02).toFixed(6);
-
-if(zone === "DEMAND ZONE" && tf === "BULLISH"){
-    entry = `BUY ZONE: ${buyLow} - ${buyHigh}`;
-}
-
-if(zone === "SUPPLY ZONE" && tf === "BEARISH"){
-    entry = `SELL ZONE: ${sellLow} - ${sellHigh}`;
-}
-
-/* =========================
-   FINAL SIGNAL ENGINE
-========================= */
-let signal = "⚠️ NO TRADE";
-let analysis = "No strong institutional setup";
+let category = "👀 WATCH";
+let signal = "NO TRADE";
 let conf = "LOW";
+let analysis = "Market normal / no edge";
 
-if(probability > 850 && breakout && tf === "BULLISH"){
-    signal = "🚀 INSTITUTIONAL BREAKOUT";
-    analysis = "High probability breakout + trend alignment";
+if(probability > 750 && breakout && tf === "BULLISH"){
+    category = "🚀 TRADE";
+    signal = "INSTITUTIONAL BREAKOUT";
     conf = "VERY HIGH";
+    analysis = "Strong breakout + trend alignment";
 }
 
-else if(probability > 800 && sweep && tf === "BULLISH"){
-    signal = "🔥 SMART MONEY ACCUMULATION";
-    analysis = "Liquidity sweep + demand zone entry";
-    conf = "HIGH";
-}
-
-else if(probability > 700){
-    signal = "⚡ EARLY SETUP WATCH";
-    analysis = "Structure forming but not confirmed";
+else if(probability > 650){
+    category = "👀 WATCH";
+    signal = "EARLY SETUP";
     conf = "MEDIUM";
+    analysis = "Setup forming but not confirmed";
 }
 
-if(risk > 60){
-    signal = "💀 HIGH RISK / AVOID";
-    analysis = "Market condition unsafe for entry";
+else{
+    category = "⚠️ AVOID";
+    signal = "NO EDGE";
     conf = "LOW";
+    analysis = "Market noisy / no setup";
 }
 
 /* =========================
@@ -252,25 +215,43 @@ symbol:c.symbol,
 price:price,
 change:change,
 volume:volume,
-count:count,
 tf:tf,
 zone:zone,
 breakout:breakout,
 sweep:sweep,
 risk:risk,
 probability:probability,
-entry:entry,
+category:category,
 signal:signal,
 analysis:analysis,
 conf:conf
 };
 
 })
-.filter(c => c.probability >= 650)
 .sort((a,b) => b.probability - a.probability)
-.slice(0,8);
+.slice(0,10);
 
-filtered.forEach(c => {
+/* fallback anti empty */
+if(all.length === 0){
+    all.push({
+        symbol:"NO DATA",
+        price:0,
+        change:0,
+        volume:0,
+        tf:"N/A",
+        zone:"N/A",
+        breakout:false,
+        sweep:false,
+        risk:0,
+        probability:0,
+        category:"⚠️ AVOID",
+        signal:"NO DATA",
+        analysis:"Fallback mode active",
+        conf:"LOW"
+    });
+}
+
+all.forEach(c => {
 
 const vol = (c.volume/1000000).toFixed(0);
 
@@ -283,13 +264,12 @@ ${c.symbol}
 </div>
 
 <div class="signal">
-${c.signal}
+${c.category} - ${c.signal}
 </div>
 
 <div class="zone">
 📊 TF: ${c.tf}<br>
 📍 Zone: ${c.zone}<br>
-🎯 Entry: ${c.entry}<br>
 📈 Change: ${c.change.toFixed(2)}% | Volume: $${vol}M<br>
 ⚠️ Risk: ${c.risk}
 </div>
