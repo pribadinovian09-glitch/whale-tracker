@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V8</title>
+<title>Smart Money AI Scanner V9</title>
 
 <style>
 body{
@@ -39,7 +39,7 @@ body{
 
 .card{
     background:#111827;
-    padding:18px;
+    padding:16px;
     border-radius:14px;
     margin-bottom:12px;
     border-left:6px solid #10b981;
@@ -60,7 +60,7 @@ body{
 
 .signal{
     margin-top:10px;
-    font-size:18px;
+    font-size:17px;
 }
 
 .zone{
@@ -90,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V8</div>
-<div class="sub">High Accuracy Confluence Engine (Strict Mode)</div>
-<div class="live">🟢 LIVE FUTURES FILTER</div>
+<div class="title">🧠 Smart Money AI Scanner V9</div>
+<div class="sub">Trading System Engine (Entry + Risk + Probability)</div>
+<div class="live">🟢 LIVE INSTITUTIONAL FLOW</div>
 
 <div id="market"></div>
 
@@ -120,66 +120,128 @@ const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
 /* =========================
-   TREND FILTER
+   MULTI TIMEFRAME BIAS (PROXY)
 ========================= */
-let trend = "NEUTRAL";
+let tf = "NEUTRAL";
 
-if(change > 3) trend = "UP";
-if(change < -3) trend = "DOWN";
+if(change > 4) tf = "BULLISH";
+if(change < -4) tf = "BEARISH";
 
 /* =========================
-   BASIC FILTERS
+   STRUCTURE QUALITY
 ========================= */
-let volumeOK = volume > 200000000;
-let strongVolume = volume > 400000000;
+let structure = 0;
+
+if(change > 1 && change < 5) structure += 25;
+if(volume > 200000000) structure += 25;
+if(volume > 400000000) structure += 15;
+if(count > 120000) structure += 10;
 
 /* =========================
-   BREAKOUT LOGIC
+   LIQUIDITY ZONES (CLUSTER)
 ========================= */
-let breakout = price > high * 0.995 && volumeOK;
+const range = high - low;
+
+const demandLow = low;
+const demandHigh = low + range * 0.22;
+
+const supplyHigh = high;
+const supplyLow = high - range * 0.22;
+
+let zone = "MID";
+
+if(price <= demandHigh) zone = "DEMAND ZONE";
+if(price >= supplyLow) zone = "SUPPLY ZONE";
 
 /* =========================
-   LIQUIDITY SWEEP
+   LIQUIDITY SWEEP (REALISTIC)
 ========================= */
-let sweep = (price < low * 1.02 && change < 0);
+let sweep = false;
+
+if(price < low * 1.02 && change < 0) sweep = true;
+if(price > high * 0.98 && change > 0) sweep = true;
 
 /* =========================
-   OVEREXTENSION FILTER
+   BREAKOUT CONFIRMATION
 ========================= */
-let extended = (change > 8 || change < -8);
+let breakout = false;
+
+if(price > high * 0.995 && volume > 250000000){
+    breakout = true;
+    structure += 30;
+}
 
 /* =========================
-   CONFLUENCE SCORE (STRICT)
+   RISK ENGINE
 ========================= */
-let confluence = 0;
+let risk = 0;
 
-if(trend === "UP") confluence += 30;
-if(volumeOK) confluence += 25;
-if(strongVolume) confluence += 10;
-if(breakout) confluence += 30;
-if(sweep) confluence += 10;
-if(change > 1 && change < 5) confluence += 10;
-
-/* penalty */
-if(extended) confluence -= 15;
+if(change > 8 || change < -8) risk += 30;
+if(volume < 80000000 && change > 4) risk += 20;
+if(tf === "BEARISH" && change > 4) risk += 25;
+if(zone === "SUPPLY ZONE" && change > 0) risk += 15;
 
 /* =========================
-   SIGNAL ENGINE (STRICT MODE)
+   PROBABILITY ENGINE (0–1000)
+========================= */
+let probability = 0;
+
+probability += structure * 3;
+if(breakout) probability += 150;
+if(sweep) probability += 80;
+if(tf === "BULLISH") probability += 100;
+if(zone === "DEMAND ZONE") probability += 100;
+
+probability -= risk * 2;
+
+/* =========================
+   ENTRY ZONE ENGINE
+========================= */
+let entry = "WAIT";
+
+let buyLow = (price * 0.98).toFixed(6);
+let buyHigh = (price * 1.01).toFixed(6);
+
+let sellLow = (price * 0.99).toFixed(6);
+let sellHigh = (price * 1.02).toFixed(6);
+
+if(zone === "DEMAND ZONE" && tf === "BULLISH"){
+    entry = `BUY ZONE: ${buyLow} - ${buyHigh}`;
+}
+
+if(zone === "SUPPLY ZONE" && tf === "BEARISH"){
+    entry = `SELL ZONE: ${sellLow} - ${sellHigh}`;
+}
+
+/* =========================
+   FINAL SIGNAL ENGINE
 ========================= */
 let signal = "⚠️ NO TRADE";
-let analysis = "No high probability setup";
+let analysis = "No strong institutional setup";
 let conf = "LOW";
 
-if(confluence >= 85 && breakout && trend === "UP"){
-    signal = "🚀 STRONG BREAKOUT SETUP";
-    analysis = "All conditions aligned (trend + breakout + volume)";
+if(probability > 850 && breakout && tf === "BULLISH"){
+    signal = "🚀 INSTITUTIONAL BREAKOUT";
+    analysis = "High probability breakout + trend alignment";
     conf = "VERY HIGH";
 }
 
-else if(confluence >= 85 && sweep && trend === "UP"){
+else if(probability > 800 && sweep && tf === "BULLISH"){
     signal = "🔥 SMART MONEY ACCUMULATION";
-    analysis = "Liquidity sweep + bullish structure";
+    analysis = "Liquidity sweep + demand zone entry";
     conf = "HIGH";
+}
+
+else if(probability > 700){
+    signal = "⚡ EARLY SETUP WATCH";
+    analysis = "Structure forming but not confirmed";
+    conf = "MEDIUM";
+}
+
+if(risk > 60){
+    signal = "💀 HIGH RISK / AVOID";
+    analysis = "Market condition unsafe for entry";
+    conf = "LOW";
 }
 
 /* =========================
@@ -191,18 +253,21 @@ price:price,
 change:change,
 volume:volume,
 count:count,
-trend:trend,
+tf:tf,
+zone:zone,
 breakout:breakout,
 sweep:sweep,
-confluence:confluence,
+risk:risk,
+probability:probability,
+entry:entry,
 signal:signal,
 analysis:analysis,
 conf:conf
 };
 
 })
-.filter(c => c.confluence >= 75) // STRICT FILTER
-.sort((a,b) => b.confluence - a.confluence)
+.filter(c => c.probability >= 650)
+.sort((a,b) => b.probability - a.probability)
 .slice(0,8);
 
 filtered.forEach(c => {
@@ -214,7 +279,7 @@ html += `
 
 <div class="coin">
 ${c.symbol}
-<span class="rank">${c.confluence}/100</span>
+<span class="rank">${c.probability}/1000</span>
 </div>
 
 <div class="signal">
@@ -222,10 +287,11 @@ ${c.signal}
 </div>
 
 <div class="zone">
-📊 Trend: ${c.trend}<br>
-📈 Change: ${c.change.toFixed(2)}%<br>
-💰 Volume: $${vol}M<br>
-🚀 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.sweep ? "YES" : "NO"}
+📊 TF: ${c.tf}<br>
+📍 Zone: ${c.zone}<br>
+🎯 Entry: ${c.entry}<br>
+📈 Change: ${c.change.toFixed(2)}% | Volume: $${vol}M<br>
+⚠️ Risk: ${c.risk}
 </div>
 
 <div class="ai">
