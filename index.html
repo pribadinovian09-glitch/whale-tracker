@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V9.1</title>
+<title>Smart Money AI Scanner V10</title>
 
 <style>
 body{
     margin:0;
     font-family:Arial;
-    background:#040515;
+    background:#040514;
     color:white;
 }
 
@@ -90,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V9.1</div>
-<div class="sub">Stable Version - Always Shows Market Flow</div>
-<div class="live">🟢 LIVE FUTURES SCANNER</div>
+<div class="title">🧠 Smart Money AI Scanner V10</div>
+<div class="sub">Multi-Timeframe + Anti Fake Breakout Engine</div>
+<div class="live">🟢 LIVE INSTITUTIONAL FLOW</div>
 
 <div id="market"></div>
 
@@ -107,7 +107,7 @@ const data = await res.json();
 
 let html = '';
 
-const all = data
+const filtered = data
 .filter(c => c.symbol.endsWith('USDT'))
 .map(c => {
 
@@ -120,91 +120,123 @@ const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
 /* =========================
-   TREND
+   MULTI TIMEFRAME ENGINE
 ========================= */
-let tf = "NEUTRAL";
+let tf_big = "NEUTRAL";   // 24H bias
+let tf_small = "NEUTRAL"; // intraday momentum
 
-if(change > 3) tf = "BULLISH";
-if(change < -3) tf = "BEARISH";
+if(change > 4) tf_big = "BULLISH";
+if(change < -4) tf_big = "BEARISH";
+
+if(change > 1) tf_small = "BULLISH";
+if(change < -1) tf_small = "BEARISH";
 
 /* =========================
-   CORE SCORE
+   ALIGNMENT CHECK
 ========================= */
-let structure = 0;
-
-if(volume > 200000000) structure += 25;
-if(change > 1 && change < 5) structure += 20;
-if(count > 120000) structure += 10;
+let aligned = (tf_big === tf_small);
 
 /* =========================
-   ZONE
+   CORE STRUCTURE SCORE
 ========================= */
-const range = high - low;
+let score = 0;
 
-const demand = low + range * 0.2;
-const supply = high - range * 0.2;
-
-let zone = "MID";
-
-if(price <= demand) zone = "DEMAND";
-if(price >= supply) zone = "SUPPLY";
+if(volume > 200000000) score += 25;
+if(volume > 400000000) score += 15;
+if(change > 1 && change < 5) score += 20;
+if(count > 120000) score += 10;
 
 /* =========================
-   BREAKOUT / SWEEP
+   LIQUIDITY SWEEP
 ========================= */
-let breakout = price > high * 0.995 && volume > 200000000;
-let sweep = price < low * 1.02 && change < 0;
+let sweep = false;
+
+if(price < low * 1.02 && change < 0) sweep = true;
+if(price > high * 0.98 && change > 0) sweep = true;
+
+if(sweep) score += 15;
 
 /* =========================
-   RISK
+   BREAKOUT LOGIC
+========================= */
+let breakout = price > high * 0.995 && volume > 250000000;
+
+if(breakout) score += 25;
+
+/* =========================
+   FAKE BREAKOUT FILTER
+========================= */
+let fakeBreakout = false;
+
+if(price > high * 0.995 && volume < 120000000){
+    fakeBreakout = true;
+    score -= 30;
+}
+
+/* =========================
+   RISK ENGINE
 ========================= */
 let risk = 0;
 
 if(change > 8 || change < -8) risk += 30;
+if(tf_big !== tf_small) risk += 25;
 if(volume < 80000000) risk += 20;
-if(tf === "BEARISH" && change > 3) risk += 25;
-if(zone === "SUPPLY" && change > 0) risk += 15;
+if(fakeBreakout) risk += 40;
 
 /* =========================
-   PROBABILITY
+   PROBABILITY ENGINE
 ========================= */
 let probability = 0;
 
-probability += structure * 3;
+probability += score * 3;
+if(aligned) probability += 120;
 if(breakout) probability += 120;
 if(sweep) probability += 80;
-if(tf === "BULLISH") probability += 80;
-if(zone === "DEMAND") probability += 80;
+if(tf_big === "BULLISH") probability += 80;
 
 probability -= risk * 2;
 
 /* =========================
-   CATEGORY SYSTEM (FIX)
+   ENTRY ZONE
 ========================= */
-let category = "👀 WATCH";
-let signal = "NO TRADE";
-let conf = "LOW";
-let analysis = "Market normal / no edge";
+let entry = "WAIT";
 
-if(probability > 750 && breakout && tf === "BULLISH"){
-    category = "🚀 TRADE";
-    signal = "INSTITUTIONAL BREAKOUT";
+let buyLow = (price * 0.98).toFixed(6);
+let buyHigh = (price * 1.01).toFixed(6);
+
+if(aligned && tf_big === "BULLISH" && sweep){
+    entry = `BUY ZONE: ${buyLow} - ${buyHigh}`;
+}
+
+/* =========================
+   SIGNAL ENGINE
+========================= */
+let signal = "⚠️ NO TRADE";
+let analysis = "No alignment / low quality setup";
+let conf = "LOW";
+
+if(probability > 800 && aligned && breakout && tf_big === "BULLISH"){
+    signal = "🚀 CONFIRMED BREAKOUT";
+    analysis = "Multi-timeframe alignment + breakout confirmed";
     conf = "VERY HIGH";
-    analysis = "Strong breakout + trend alignment";
+}
+
+else if(probability > 750 && sweep && aligned){
+    signal = "🔥 SMART MONEY ACCUMULATION";
+    analysis = "Liquidity sweep + aligned trend";
+    conf = "HIGH";
 }
 
 else if(probability > 650){
-    category = "👀 WATCH";
-    signal = "EARLY SETUP";
-    conf = "MEDIUM";
+    signal = "⚡ EARLY STRUCTURE";
     analysis = "Setup forming but not confirmed";
+    conf = "MEDIUM";
 }
 
-else{
-    category = "⚠️ AVOID";
-    signal = "NO EDGE";
+if(fakeBreakout){
+    signal = "💀 FAKE BREAKOUT RISK";
+    analysis = "Low volume breakout detected";
     conf = "LOW";
-    analysis = "Market noisy / no setup";
 }
 
 /* =========================
@@ -215,43 +247,48 @@ symbol:c.symbol,
 price:price,
 change:change,
 volume:volume,
-tf:tf,
-zone:zone,
+tf_big:tf_big,
+tf_small:tf_small,
+aligned:aligned,
 breakout:breakout,
+fakeBreakout:fakeBreakout,
 sweep:sweep,
 risk:risk,
 probability:probability,
-category:category,
+entry:entry,
 signal:signal,
 analysis:analysis,
 conf:conf
 };
 
 })
+.filter(c => c.probability >= 650)
 .sort((a,b) => b.probability - a.probability)
 .slice(0,10);
 
-/* fallback anti empty */
-if(all.length === 0){
-    all.push({
-        symbol:"NO DATA",
+/* fallback */
+if(filtered.length === 0){
+    filtered.push({
+        symbol:"NO SETUP",
         price:0,
         change:0,
         volume:0,
-        tf:"N/A",
-        zone:"N/A",
+        tf_big:"N/A",
+        tf_small:"N/A",
+        aligned:false,
         breakout:false,
+        fakeBreakout:false,
         sweep:false,
         risk:0,
         probability:0,
-        category:"⚠️ AVOID",
-        signal:"NO DATA",
-        analysis:"Fallback mode active",
+        entry:"WAIT",
+        signal:"⚠️ NO TRADE",
+        analysis:"No valid multi-timeframe setup",
         conf:"LOW"
     });
 }
 
-all.forEach(c => {
+filtered.forEach(c => {
 
 const vol = (c.volume/1000000).toFixed(0);
 
@@ -264,14 +301,15 @@ ${c.symbol}
 </div>
 
 <div class="signal">
-${c.category} - ${c.signal}
+${c.signal}
 </div>
 
 <div class="zone">
-📊 TF: ${c.tf}<br>
-📍 Zone: ${c.zone}<br>
-📈 Change: ${c.change.toFixed(2)}% | Volume: $${vol}M<br>
-⚠️ Risk: ${c.risk}
+📊 TF BIG: ${c.tf_big} | TF SMALL: ${c.tf_small}<br>
+🔗 Aligned: ${c.aligned ? "YES" : "NO"}<br>
+📈 Breakout: ${c.breakout ? "YES" : "NO"} | Fake: ${c.fakeBreakout ? "YES" : "NO"}<br>
+🎯 Entry: ${c.entry}<br>
+💰 Volume: $${vol}M | Change: ${c.change.toFixed(2)}%
 </div>
 
 <div class="ai">
