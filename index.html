@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V6</title>
+<title>Smart Money AI Scanner V8</title>
 
 <style>
 body{
     margin:0;
     font-family:Arial;
-    background:#050712;
+    background:#040515;
     color:white;
 }
 
@@ -21,7 +21,7 @@ body{
 
 .title{
     text-align:center;
-    font-size:40px;
+    font-size:38px;
     margin-top:20px;
 }
 
@@ -46,7 +46,7 @@ body{
 }
 
 .coin{
-    font-size:24px;
+    font-size:22px;
     font-weight:bold;
 }
 
@@ -60,7 +60,7 @@ body{
 
 .signal{
     margin-top:10px;
-    font-size:17px;
+    font-size:18px;
 }
 
 .zone{
@@ -70,18 +70,18 @@ body{
 }
 
 .ai{
-    margin-top:10px;
+    margin-top:8px;
     background:#0f172a;
     padding:10px;
     border-radius:10px;
     color:#38bdf8;
-    font-size:13px;
+    font-size:12px;
 }
 
 .conf{
     margin-top:6px;
     color:#facc15;
-    font-size:13px;
+    font-size:12px;
 }
 </style>
 </head>
@@ -90,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V6</div>
-<div class="sub">Hedge Fund Style Liquidity + Trend Regime Engine</div>
-<div class="live">🟢 LIVE FUTURES FLOW</div>
+<div class="title">🧠 Smart Money AI Scanner V8</div>
+<div class="sub">High Accuracy Confluence Engine (Strict Mode)</div>
+<div class="live">🟢 LIVE FUTURES FILTER</div>
 
 <div id="market"></div>
 
@@ -120,118 +120,66 @@ const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
 /* =========================
-   REGIME DETECTION
+   TREND FILTER
 ========================= */
-let regime = "RANGE";
+let trend = "NEUTRAL";
 
-if(change > 4) regime = "TREND UP";
-if(change < -4) regime = "TREND DOWN";
+if(change > 3) trend = "UP";
+if(change < -3) trend = "DOWN";
 
 /* =========================
-   SMART MONEY SCORE CORE
+   BASIC FILTERS
 ========================= */
-let score = 0;
-let trap = 0;
-
-/* volume strength */
-if(volume > 200000000) score += 20;
-if(volume > 400000000) score += 35;
-
-/* movement quality */
-if(change > 1 && change < 5) score += 20;
-
-/* activity */
-if(count > 120000) score += 15;
-
-/* efficiency */
-if(volume / count > 500) score += 10;
+let volumeOK = volume > 200000000;
+let strongVolume = volume > 400000000;
 
 /* =========================
-   LIQUIDITY ZONE (BROAD)
+   BREAKOUT LOGIC
 ========================= */
-const range = high - low;
-const upperZone = high - (range * 0.15);
-const lowerZone = low + (range * 0.15);
-
-let zone = "MID";
-
-if(price >= upperZone) zone = "SUPPLY ZONE";
-if(price <= lowerZone) zone = "DEMAND ZONE";
+let breakout = price > high * 0.995 && volumeOK;
 
 /* =========================
-   LIQUIDITY SWEEP LOGIC
+   LIQUIDITY SWEEP
 ========================= */
-let sweep = false;
-
-if(price < low * 1.02 && change < 0){
-    sweep = true;
-    score += 15;
-}
-
-if(price > high * 0.98 && change > 0){
-    sweep = true;
-    score += 10;
-}
+let sweep = (price < low * 1.02 && change < 0);
 
 /* =========================
-   BREAKOUT CONFIRMATION
+   OVEREXTENSION FILTER
 ========================= */
-let breakout = false;
-
-if(price > high * 0.995 && volume > 250000000){
-    breakout = true;
-    score += 25;
-}
+let extended = (change > 8 || change < -8);
 
 /* =========================
-   TRAP FILTER (IMPROVED)
+   CONFLUENCE SCORE (STRICT)
 ========================= */
-if(change > 10) trap += 40;
-if(volume < 60000000 && change > 4) trap += 25;
-if(change > 7 && volume < 120000000) trap += 20;
+let confluence = 0;
+
+if(trend === "UP") confluence += 30;
+if(volumeOK) confluence += 25;
+if(strongVolume) confluence += 10;
+if(breakout) confluence += 30;
+if(sweep) confluence += 10;
+if(change > 1 && change < 5) confluence += 10;
+
+/* penalty */
+if(extended) confluence -= 15;
 
 /* =========================
-   STRUCTURE MOMENTUM
+   SIGNAL ENGINE (STRICT MODE)
 ========================= */
-if(change > 3) score += 15;
-if(change < -3) score -= 10;
+let signal = "⚠️ NO TRADE";
+let analysis = "No high probability setup";
+let conf = "LOW";
 
-/* =========================
-   FINAL SIGNAL ENGINE
-========================= */
-let signal = "👀 WATCH";
-let analysis = "Market belum ada edge jelas";
-let conf = "MEDIUM";
-
-if(breakout && regime === "TREND UP" && trap < 25){
-    signal = "🚀 INSTITUTIONAL BREAKOUT";
-    analysis = "Breakout + trend alignment + volume confirmed";
+if(confluence >= 85 && breakout && trend === "UP"){
+    signal = "🚀 STRONG BREAKOUT SETUP";
+    analysis = "All conditions aligned (trend + breakout + volume)";
     conf = "VERY HIGH";
 }
 
-else if(score > 85 && sweep && zone === "DEMAND ZONE"){
+else if(confluence >= 85 && sweep && trend === "UP"){
     signal = "🔥 SMART MONEY ACCUMULATION";
-    analysis = "Liquidity sweep + demand zone entry area";
+    analysis = "Liquidity sweep + bullish structure";
     conf = "HIGH";
-}
-
-else if(score > 75){
-    signal = "⚡ EARLY STRUCTURE BUILD";
-    analysis = "Trend mulai terbentuk tapi belum breakout";
-    conf = "MEDIUM";
-}
-
-if(zone === "SUPPLY ZONE" && change < 0){
-    signal = "⚠️ DISTRIBUTION RISK";
-    analysis = "Harga di area supply + tekanan jual";
-    conf = "LOW";
-}
-
-if(trap > 50){
-    signal = "💀 LIQUIDITY TRAP";
-    analysis = "Fake move / stop hunt kemungkinan tinggi";
-    conf = "LOW";
-    score -= 20;
 }
 
 /* =========================
@@ -243,20 +191,19 @@ price:price,
 change:change,
 volume:volume,
 count:count,
-score:score,
+trend:trend,
+breakout:breakout,
+sweep:sweep,
+confluence:confluence,
 signal:signal,
 analysis:analysis,
-conf:conf,
-regime:regime,
-zone:zone,
-breakout:breakout,
-sweep:sweep
+conf:conf
 };
 
 })
-.filter(c => c.score >= 70)
-.sort((a,b) => b.score - a.score)
-.slice(0,10);
+.filter(c => c.confluence >= 75) // STRICT FILTER
+.sort((a,b) => b.confluence - a.confluence)
+.slice(0,8);
 
 filtered.forEach(c => {
 
@@ -267,7 +214,7 @@ html += `
 
 <div class="coin">
 ${c.symbol}
-<span class="rank">AI ${c.score}/100</span>
+<span class="rank">${c.confluence}/100</span>
 </div>
 
 <div class="signal">
@@ -275,9 +222,10 @@ ${c.signal}
 </div>
 
 <div class="zone">
-📊 Regime: ${c.regime}<br>
-📍 Zone: ${c.zone}<br>
-📈 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.sweep ? "YES" : "NO"}
+📊 Trend: ${c.trend}<br>
+📈 Change: ${c.change.toFixed(2)}%<br>
+💰 Volume: $${vol}M<br>
+🚀 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.sweep ? "YES" : "NO"}
 </div>
 
 <div class="ai">
