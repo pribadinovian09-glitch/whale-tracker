@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V3 PRO</title>
+<title>Smart Money AI Scanner V5</title>
 
 <style>
 body{
     margin:0;
     font-family:Arial;
-    background:#081120;
+    background:#050816;
     color:white;
 }
 
@@ -21,70 +21,67 @@ body{
 
 .title{
     text-align:center;
-    font-size:48px;
+    font-size:42px;
     margin-top:20px;
 }
 
 .sub{
     text-align:center;
     color:#94a3b8;
-    margin-bottom:30px;
+    margin-bottom:20px;
 }
 
 .live{
     text-align:center;
     color:#22c55e;
     margin-bottom:25px;
-    font-size:18px;
 }
 
 .card{
     background:#111827;
-    padding:24px;
-    border-radius:20px;
-    margin-bottom:22px;
-    border-left:7px solid #10b981;
+    padding:20px;
+    border-radius:16px;
+    margin-bottom:14px;
+    border-left:6px solid #10b981;
 }
 
 .coin{
-    font-size:34px;
+    font-size:26px;
     font-weight:bold;
-}
-
-.signal{
-    margin-top:12px;
-    font-size:21px;
-    color:#22c55e;
-}
-
-.stats{
-    margin-top:18px;
-    line-height:2;
-    color:#cbd5e1;
-    font-size:18px;
 }
 
 .rank{
     float:right;
     background:#10b981;
-    padding:8px 14px;
+    padding:6px 10px;
     border-radius:999px;
+    font-size:12px;
+}
+
+.signal{
+    margin-top:10px;
+    font-size:18px;
+}
+
+.zone{
+    margin-top:10px;
+    color:#93c5fd;
     font-size:14px;
 }
 
 .ai{
-    margin-top:14px;
+    margin-top:10px;
     background:#0f172a;
-    padding:14px;
-    border-radius:14px;
+    padding:10px;
+    border-radius:10px;
     color:#38bdf8;
-    font-size:16px;
+    font-size:13px;
 }
 
 .conf{
-    margin-top:10px;
+    margin-top:8px;
     color:#facc15;
-    font-size:16px;
+    font-size:13px;
 }
 </style>
 </head>
@@ -93,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V3 PRO</div>
-<div class="sub">Realtime Whale Flow + Futures Intelligence</div>
-<div class="live">🟢 LIVE BINANCE FUTURES AI ENGINE</div>
+<div class="title">🧠 Smart Money AI Scanner V5</div>
+<div class="sub">Structure + Liquidity + Trend Shift Engine</div>
+<div class="live">🟢 LIVE FUTURES SCANNER</div>
 
 <div id="market"></div>
 
@@ -105,133 +102,196 @@ body{
 
 async function loadData(){
 
-const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
-const tickers = await tickerRes.json();
+const res = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+const data = await res.json();
 
 let html = '';
 
-const filtered = tickers
+const filtered = data
 .filter(c => c.symbol.endsWith('USDT'))
 .map(c => {
+
+const price = parseFloat(c.lastPrice);
+const high = parseFloat(c.highPrice);
+const low = parseFloat(c.lowPrice);
 
 const volume = parseFloat(c.quoteVolume);
 const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
-let ai = 0;
-let structure = 0;
+/* =========================
+   TREND STATE ENGINE
+========================= */
+let trend = "RANGE";
+
+if(change > 3) trend = "BULLISH MOMENTUM";
+if(change < -3) trend = "BEARISH MOMENTUM";
+
+/* =========================
+   SMART MONEY SCORE
+========================= */
+let score = 0;
 let trap = 0;
 
-/* =========================
-   VOLUME FILTER
-========================= */
-if(volume > 150000000) ai += 25;
-if(volume > 300000000) ai += 40;
+/* volume confirmation */
+if(volume > 200000000) score += 25;
+if(volume > 400000000) score += 40;
+
+/* healthy movement */
+if(change > 1 && change < 5) score += 20;
+
+/* activity */
+if(count > 120000) score += 15;
+
+/* efficiency */
+if(volume / count > 500) score += 10;
 
 /* =========================
-   HEALTHY MOVE FILTER
+   STRUCTURE SHIFT (IMPORTANT)
 ========================= */
-if(change > 1 && change < 5) ai += 25;
+let structureShift = false;
+
+if(change > 5){
+    structureShift = true;
+    score += 20;
+}
+
+if(change < -5){
+    structureShift = true;
+    score -= 15;
+}
 
 /* =========================
-   ACTIVITY FILTER
+   LIQUIDITY SWEEP (proxy)
 ========================= */
-if(count > 120000) ai += 15;
+let liquiditySweep = false;
 
-/* =========================
-   EFFICIENCY FILTER
-========================= */
-if(volume / count > 500) ai += 10;
-
-/* =========================
-   STRUCTURE LOGIC
-========================= */
-if(change > 2 && change < 6) structure += 20;
-if(change > -3 && change < 3) structure += 15;
-if(change > 10) structure -= 30;
+if(change < -2 && price > low * 1.02){
+    liquiditySweep = true;
+    score += 15;
+}
 
 /* =========================
    TRAP DETECTOR
 ========================= */
-if(change > 8) trap += 40;
-if(volume < 50000000 && change > 3) trap += 25;
+if(change > 10) trap += 40;
+if(volume < 60000000 && change > 4) trap += 25;
 
 /* =========================
-   APPLY FILTERS
+   SUPPORT / RESISTANCE ZONE
 ========================= */
-ai += structure;
-ai -= trap;
+const resistance = high;
+const support = low;
+
+let zone = "MID";
+
+if(price > high * 0.98){
+    zone = "RESISTANCE";
+}
+
+if(price < low * 1.02){
+    zone = "SUPPORT";
+}
 
 /* =========================
-   SIGNAL LOGIC
+   BREAKOUT CONFIRMATION
 ========================= */
-let signal = '👀 WATCH';
-let analysis = 'Market belum jelas arah';
-let conf = 'MEDIUM';
+let breakout = false;
 
-if(ai > 90 && trap < 20){
-    signal = '🚀 SMART MONEY BUY ZONE';
-    analysis = 'Accumulation + breakout structure valid';
-    conf = 'VERY HIGH';
+if(price > high * 0.995 && volume > 200000000){
+    breakout = true;
+    score += 25;
 }
-else if(ai > 80 && trap < 30){
-    signal = '🔥 BUY WATCH ZONE';
-    analysis = 'Early accumulation detected';
-    conf = 'HIGH';
+
+/* =========================
+   SIGNAL ENGINE
+========================= */
+let signal = "👀 WATCH";
+let analysis = "Market belum ada structure jelas";
+let conf = "MEDIUM";
+
+if(breakout && trend === "BULLISH MOMENTUM" && trap < 20){
+    signal = "🚀 BREAKOUT BUY CONFIRMED";
+    analysis = "Breakout + volume + trend align";
+    conf = "VERY HIGH";
 }
-else if(ai > 70){
-    signal = '⚡ WAIT CONFIRMATION';
-    analysis = 'Belum cukup kuat untuk entry';
-    conf = 'MEDIUM';
+
+else if(score > 85 && liquiditySweep && zone === "SUPPORT"){
+    signal = "🔥 SMART MONEY ACCUMULATION";
+    analysis = "Sweep + support accumulation";
+    conf = "HIGH";
+}
+
+else if(score > 75){
+    signal = "⚡ EARLY MOVE WATCH";
+    analysis = "Trend mulai terbentuk";
+    conf = "MEDIUM";
+}
+
+if(zone === "RESISTANCE" && change < 0){
+    signal = "⚠️ REJECTION RISK";
+    analysis = "Tertahan di resistance";
+    conf = "LOW";
 }
 
 if(trap > 50){
-    signal = '⚠️ REBOUND / TRAP RISK';
-    analysis = 'Fake pump / liquidity grab kemungkinan tinggi';
-    conf = 'LOW';
-    ai -= 20;
+    signal = "💀 LIQUIDITY TRAP";
+    analysis = "Fake move kemungkinan tinggi";
+    conf = "LOW";
+    score -= 20;
 }
 
+/* =========================
+   OUTPUT
+========================= */
 return {
 symbol:c.symbol,
+price:price,
 change:change,
 volume:volume,
 count:count,
-ai:ai,
+score:score,
 signal:signal,
 analysis:analysis,
-conf:conf
+conf:conf,
+trend:trend,
+zone:zone,
+breakout:breakout,
+liquiditySweep:liquiditySweep,
+support:support,
+resistance:resistance
 };
 
 })
-.filter(c => c.ai >= 70)
-.sort((a,b) => b.ai - a.ai)
+.filter(c => c.score >= 70)
+.sort((a,b) => b.score - a.score)
 .slice(0,10);
 
 filtered.forEach(c => {
 
-const volume = (c.volume/1000000).toFixed(0);
+const vol = (c.volume/1000000).toFixed(0);
 
 html += `
 <div class="card">
 
 <div class="coin">
 ${c.symbol}
-<span class="rank">AI ${c.ai}/100</span>
+<span class="rank">AI ${c.score}/100</span>
 </div>
 
 <div class="signal">
 ${c.signal}
 </div>
 
-<div class="stats">
-📈 24H Change: ${c.change.toFixed(2)}%<br>
-💰 Futures Volume: $${volume}M<br>
-⚡ Trade Activity: ${Math.floor(c.count)} trades
+<div class="zone">
+📊 Trend: ${c.trend}<br>
+📍 Zone: ${c.zone}<br>
+📈 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.liquiditySweep ? "YES" : "NO"}<br>
+📌 Support: ${c.support.toFixed(6)} | Resistance: ${c.resistance.toFixed(6)}
 </div>
 
 <div class="ai">
-🧠 AI Analysis: ${c.analysis}
+🧠 Analysis: ${c.analysis}
 
 <div class="conf">
 ⭐ Confidence: ${c.conf}
