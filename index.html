@@ -3,13 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Smart Money AI Scanner V5</title>
+<title>Smart Money AI Scanner V6</title>
 
 <style>
 body{
     margin:0;
     font-family:Arial;
-    background:#050816;
+    background:#050712;
     color:white;
 }
 
@@ -21,7 +21,7 @@ body{
 
 .title{
     text-align:center;
-    font-size:42px;
+    font-size:40px;
     margin-top:20px;
 }
 
@@ -39,34 +39,34 @@ body{
 
 .card{
     background:#111827;
-    padding:20px;
-    border-radius:16px;
-    margin-bottom:14px;
+    padding:18px;
+    border-radius:14px;
+    margin-bottom:12px;
     border-left:6px solid #10b981;
 }
 
 .coin{
-    font-size:26px;
+    font-size:24px;
     font-weight:bold;
 }
 
 .rank{
     float:right;
     background:#10b981;
-    padding:6px 10px;
+    padding:5px 9px;
     border-radius:999px;
     font-size:12px;
 }
 
 .signal{
     margin-top:10px;
-    font-size:18px;
+    font-size:17px;
 }
 
 .zone{
-    margin-top:10px;
+    margin-top:8px;
     color:#93c5fd;
-    font-size:14px;
+    font-size:13px;
 }
 
 .ai{
@@ -79,7 +79,7 @@ body{
 }
 
 .conf{
-    margin-top:8px;
+    margin-top:6px;
     color:#facc15;
     font-size:13px;
 }
@@ -90,9 +90,9 @@ body{
 
 <div class="container">
 
-<div class="title">🧠 Smart Money AI Scanner V5</div>
-<div class="sub">Structure + Liquidity + Trend Shift Engine</div>
-<div class="live">🟢 LIVE FUTURES SCANNER</div>
+<div class="title">🧠 Smart Money AI Scanner V6</div>
+<div class="sub">Hedge Fund Style Liquidity + Trend Regime Engine</div>
+<div class="live">🟢 LIVE FUTURES FLOW</div>
 
 <div id="market"></div>
 
@@ -120,24 +120,24 @@ const change = parseFloat(c.priceChangePercent);
 const count = parseFloat(c.count);
 
 /* =========================
-   TREND STATE ENGINE
+   REGIME DETECTION
 ========================= */
-let trend = "RANGE";
+let regime = "RANGE";
 
-if(change > 3) trend = "BULLISH MOMENTUM";
-if(change < -3) trend = "BEARISH MOMENTUM";
+if(change > 4) regime = "TREND UP";
+if(change < -4) regime = "TREND DOWN";
 
 /* =========================
-   SMART MONEY SCORE
+   SMART MONEY SCORE CORE
 ========================= */
 let score = 0;
 let trap = 0;
 
-/* volume confirmation */
-if(volume > 200000000) score += 25;
-if(volume > 400000000) score += 40;
+/* volume strength */
+if(volume > 200000000) score += 20;
+if(volume > 400000000) score += 35;
 
-/* healthy movement */
+/* movement quality */
 if(change > 1 && change < 5) score += 20;
 
 /* activity */
@@ -147,50 +147,30 @@ if(count > 120000) score += 15;
 if(volume / count > 500) score += 10;
 
 /* =========================
-   STRUCTURE SHIFT (IMPORTANT)
+   LIQUIDITY ZONE (BROAD)
 ========================= */
-let structureShift = false;
-
-if(change > 5){
-    structureShift = true;
-    score += 20;
-}
-
-if(change < -5){
-    structureShift = true;
-    score -= 15;
-}
-
-/* =========================
-   LIQUIDITY SWEEP (proxy)
-========================= */
-let liquiditySweep = false;
-
-if(change < -2 && price > low * 1.02){
-    liquiditySweep = true;
-    score += 15;
-}
-
-/* =========================
-   TRAP DETECTOR
-========================= */
-if(change > 10) trap += 40;
-if(volume < 60000000 && change > 4) trap += 25;
-
-/* =========================
-   SUPPORT / RESISTANCE ZONE
-========================= */
-const resistance = high;
-const support = low;
+const range = high - low;
+const upperZone = high - (range * 0.15);
+const lowerZone = low + (range * 0.15);
 
 let zone = "MID";
 
-if(price > high * 0.98){
-    zone = "RESISTANCE";
+if(price >= upperZone) zone = "SUPPLY ZONE";
+if(price <= lowerZone) zone = "DEMAND ZONE";
+
+/* =========================
+   LIQUIDITY SWEEP LOGIC
+========================= */
+let sweep = false;
+
+if(price < low * 1.02 && change < 0){
+    sweep = true;
+    score += 15;
 }
 
-if(price < low * 1.02){
-    zone = "SUPPORT";
+if(price > high * 0.98 && change > 0){
+    sweep = true;
+    score += 10;
 }
 
 /* =========================
@@ -198,45 +178,58 @@ if(price < low * 1.02){
 ========================= */
 let breakout = false;
 
-if(price > high * 0.995 && volume > 200000000){
+if(price > high * 0.995 && volume > 250000000){
     breakout = true;
     score += 25;
 }
 
 /* =========================
-   SIGNAL ENGINE
+   TRAP FILTER (IMPROVED)
+========================= */
+if(change > 10) trap += 40;
+if(volume < 60000000 && change > 4) trap += 25;
+if(change > 7 && volume < 120000000) trap += 20;
+
+/* =========================
+   STRUCTURE MOMENTUM
+========================= */
+if(change > 3) score += 15;
+if(change < -3) score -= 10;
+
+/* =========================
+   FINAL SIGNAL ENGINE
 ========================= */
 let signal = "👀 WATCH";
-let analysis = "Market belum ada structure jelas";
+let analysis = "Market belum ada edge jelas";
 let conf = "MEDIUM";
 
-if(breakout && trend === "BULLISH MOMENTUM" && trap < 20){
-    signal = "🚀 BREAKOUT BUY CONFIRMED";
-    analysis = "Breakout + volume + trend align";
+if(breakout && regime === "TREND UP" && trap < 25){
+    signal = "🚀 INSTITUTIONAL BREAKOUT";
+    analysis = "Breakout + trend alignment + volume confirmed";
     conf = "VERY HIGH";
 }
 
-else if(score > 85 && liquiditySweep && zone === "SUPPORT"){
+else if(score > 85 && sweep && zone === "DEMAND ZONE"){
     signal = "🔥 SMART MONEY ACCUMULATION";
-    analysis = "Sweep + support accumulation";
+    analysis = "Liquidity sweep + demand zone entry area";
     conf = "HIGH";
 }
 
 else if(score > 75){
-    signal = "⚡ EARLY MOVE WATCH";
-    analysis = "Trend mulai terbentuk";
+    signal = "⚡ EARLY STRUCTURE BUILD";
+    analysis = "Trend mulai terbentuk tapi belum breakout";
     conf = "MEDIUM";
 }
 
-if(zone === "RESISTANCE" && change < 0){
-    signal = "⚠️ REJECTION RISK";
-    analysis = "Tertahan di resistance";
+if(zone === "SUPPLY ZONE" && change < 0){
+    signal = "⚠️ DISTRIBUTION RISK";
+    analysis = "Harga di area supply + tekanan jual";
     conf = "LOW";
 }
 
 if(trap > 50){
     signal = "💀 LIQUIDITY TRAP";
-    analysis = "Fake move kemungkinan tinggi";
+    analysis = "Fake move / stop hunt kemungkinan tinggi";
     conf = "LOW";
     score -= 20;
 }
@@ -254,12 +247,10 @@ score:score,
 signal:signal,
 analysis:analysis,
 conf:conf,
-trend:trend,
+regime:regime,
 zone:zone,
 breakout:breakout,
-liquiditySweep:liquiditySweep,
-support:support,
-resistance:resistance
+sweep:sweep
 };
 
 })
@@ -284,14 +275,13 @@ ${c.signal}
 </div>
 
 <div class="zone">
-📊 Trend: ${c.trend}<br>
+📊 Regime: ${c.regime}<br>
 📍 Zone: ${c.zone}<br>
-📈 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.liquiditySweep ? "YES" : "NO"}<br>
-📌 Support: ${c.support.toFixed(6)} | Resistance: ${c.resistance.toFixed(6)}
+📈 Breakout: ${c.breakout ? "YES" : "NO"} | Sweep: ${c.sweep ? "YES" : "NO"}
 </div>
 
 <div class="ai">
-🧠 Analysis: ${c.analysis}
+🧠 ${c.analysis}
 
 <div class="conf">
 ⭐ Confidence: ${c.conf}
