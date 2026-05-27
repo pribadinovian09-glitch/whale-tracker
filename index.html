@@ -6,7 +6,6 @@
 <title>Smart Money AI Scanner V3 PRO</title>
 
 <style>
-
 body{
     margin:0;
     font-family:Arial;
@@ -87,7 +86,6 @@ body{
     color:#facc15;
     font-size:16px;
 }
-
 </style>
 </head>
 
@@ -95,17 +93,9 @@ body{
 
 <div class="container">
 
-<div class="title">
-🧠 Smart Money AI Scanner V3 PRO
-</div>
-
-<div class="sub">
-Realtime Whale Flow + Futures Intelligence
-</div>
-
-<div class="live">
-🟢 LIVE BINANCE FUTURES AI ENGINE
-</div>
+<div class="title">🧠 Smart Money AI Scanner V3 PRO</div>
+<div class="sub">Realtime Whale Flow + Futures Intelligence</div>
+<div class="live">🟢 LIVE BINANCE FUTURES AI ENGINE</div>
 
 <div id="market"></div>
 
@@ -115,120 +105,94 @@ Realtime Whale Flow + Futures Intelligence
 
 async function loadData(){
 
-const tickerRes =
-await fetch(
-'https://fapi.binance.com/fapi/v1/ticker/24hr'
-);
-
-const oiRes =
-await fetch(
-'https://fapi.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m&limit=1'
-);
-
-const tickers =
-await tickerRes.json();
+const tickerRes = await fetch('https://fapi.binance.com/fapi/v1/ticker/24hr');
+const tickers = await tickerRes.json();
 
 let html = '';
 
-const filtered =
-tickers
-.filter(c =>
-c.symbol.endsWith('USDT')
-)
-
+const filtered = tickers
+.filter(c => c.symbol.endsWith('USDT'))
 .map(c => {
 
-const volume =
-parseFloat(c.quoteVolume);
-
-const change =
-parseFloat(c.priceChangePercent);
-
-const count =
-parseFloat(c.count);
+const volume = parseFloat(c.quoteVolume);
+const change = parseFloat(c.priceChangePercent);
+const count = parseFloat(c.count);
 
 let ai = 0;
+let structure = 0;
+let trap = 0;
 
-if(volume > 100000000)
-ai += 30;
+/* =========================
+   VOLUME FILTER
+========================= */
+if(volume > 150000000) ai += 25;
+if(volume > 300000000) ai += 40;
 
-if(change > 1 && change < 6)
-ai += 25;
+/* =========================
+   HEALTHY MOVE FILTER
+========================= */
+if(change > 1 && change < 5) ai += 25;
 
-if(count > 120000)
-ai += 20;
+/* =========================
+   ACTIVITY FILTER
+========================= */
+if(count > 120000) ai += 15;
 
-if(change < 8)
-ai += 10;
+/* =========================
+   EFFICIENCY FILTER
+========================= */
+if(volume / count > 500) ai += 10;
 
-if(volume/count > 500)
-ai += 15;
+/* =========================
+   STRUCTURE LOGIC
+========================= */
+if(change > 2 && change < 6) structure += 20;
+if(change > -3 && change < 3) structure += 15;
+if(change > 10) structure -= 30;
 
-let signal =
-'👀 WATCH';
+/* =========================
+   TRAP DETECTOR
+========================= */
+if(change > 8) trap += 40;
+if(volume < 50000000 && change > 3) trap += 25;
 
-let analysis =
-'Momentum mulai aktif';
+/* =========================
+   APPLY FILTERS
+========================= */
+ai += structure;
+ai -= trap;
 
-let conf =
-'MEDIUM';
+/* =========================
+   SIGNAL LOGIC
+========================= */
+let signal = '👀 WATCH';
+let analysis = 'Market belum jelas arah';
+let conf = 'MEDIUM';
 
-if(ai > 92){
-
-signal =
-'🚀 STRONG SMART MONEY';
-
-analysis =
-'Whale accumulation + futures activity sangat kuat';
-
-conf =
-'VERY HIGH';
-
+if(ai > 90 && trap < 20){
+    signal = '🚀 SMART MONEY BUY ZONE';
+    analysis = 'Accumulation + breakout structure valid';
+    conf = 'VERY HIGH';
 }
-
-else if(ai > 82){
-
-signal =
-'🔥 EARLY ACCUMULATION';
-
-analysis =
-'Kemungkinan smart money positioning';
-
-conf =
-'HIGH';
-
+else if(ai > 80 && trap < 30){
+    signal = '🔥 BUY WATCH ZONE';
+    analysis = 'Early accumulation detected';
+    conf = 'HIGH';
 }
-
 else if(ai > 70){
-
-signal =
-'⚡ BREAKOUT WATCH';
-
-analysis =
-'Momentum mulai terbentuk';
-
-conf =
-'MEDIUM';
-
+    signal = '⚡ WAIT CONFIRMATION';
+    analysis = 'Belum cukup kuat untuk entry';
+    conf = 'MEDIUM';
 }
 
-if(change > 12){
-
-signal =
-'⚠️ POSSIBLE OVERPUMP';
-
-analysis =
-'Kemungkinan telat entry / rawan dump';
-
-conf =
-'LOW';
-
-ai -= 20;
-
+if(trap > 50){
+    signal = '⚠️ REBOUND / TRAP RISK';
+    analysis = 'Fake pump / liquidity grab kemungkinan tinggi';
+    conf = 'LOW';
+    ai -= 20;
 }
 
 return {
-
 symbol:c.symbol,
 change:change,
 volume:volume,
@@ -237,39 +201,23 @@ ai:ai,
 signal:signal,
 analysis:analysis,
 conf:conf
-
 };
 
 })
-
-.filter(c =>
-c.ai >= 70
-)
-
-.sort((a,b) =>
-b.ai - a.ai
-)
-
+.filter(c => c.ai >= 70)
+.sort((a,b) => b.ai - a.ai)
 .slice(0,10);
 
 filtered.forEach(c => {
 
-const volume =
-(c.volume/1000000)
-.toFixed(0);
+const volume = (c.volume/1000000).toFixed(0);
 
 html += `
-
 <div class="card">
 
 <div class="coin">
-
 ${c.symbol}
-
-<span class="rank">
-AI ${c.ai}/100
-</span>
-
+<span class="rank">AI ${c.ai}/100</span>
 </div>
 
 <div class="signal">
@@ -277,43 +225,29 @@ ${c.signal}
 </div>
 
 <div class="stats">
-
-📈 24H Change:
-${c.change.toFixed(2)}%<br>
-
-💰 Futures Volume:
-$${volume}M<br>
-
-⚡ Trade Activity:
-${Math.floor(c.count)} trades
-
+📈 24H Change: ${c.change.toFixed(2)}%<br>
+💰 Futures Volume: $${volume}M<br>
+⚡ Trade Activity: ${Math.floor(c.count)} trades
 </div>
 
 <div class="ai">
-
-🧠 AI Analysis:
-${c.analysis}
+🧠 AI Analysis: ${c.analysis}
 
 <div class="conf">
-⭐ Confidence:
-${c.conf}
+⭐ Confidence: ${c.conf}
 </div>
 
 </div>
 
 </div>
-
 `;
-
 });
 
-document.getElementById('market')
-.innerHTML = html;
+document.getElementById('market').innerHTML = html;
 
 }
 
 loadData();
-
 setInterval(loadData, 5000);
 
 </script>
