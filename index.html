@@ -1,91 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Binance Daily MA200 Scanner</title>
+<title>MA200 Daily Touch Scanner</title>
 
 <style>
 body{
- background:#050816;
- color:white;
- font-family:Arial,sans-serif;
- padding:20px;
- margin:0;
+  background:#050816;
+  color:white;
+  font-family:Arial;
+  padding:20px;
 }
 
 h1{
- text-align:center;
+  text-align:center;
 }
 
 #status{
- text-align:center;
- color:#38bdf8;
- margin-bottom:20px;
+  text-align:center;
+  color:#38bdf8;
+  margin-bottom:20px;
 }
 
 .card{
- background:#111827;
- border-radius:12px;
- padding:15px;
- margin-bottom:10px;
- border-left:5px solid #22c55e;
+  background:#111827;
+  border-left:5px solid #22c55e;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:10px;
 }
 
 .symbol{
- font-size:20px;
- font-weight:bold;
- margin-bottom:8px;
+  font-size:20px;
+  font-weight:bold;
 }
 
-.green{
- color:#22c55e;
- font-weight:bold;
+.touch{
+  color:#22c55e;
+  font-weight:bold;
 }
 
 .small{
- color:#cbd5e1;
- margin-top:8px;
- font-size:14px;
+  color:#cbd5e1;
+  margin-top:8px;
 }
 </style>
 </head>
 <body>
 
-<h1>📈 Binance Daily MA200 Scanner</h1>
+<h1>🔥 MA200 Daily Touch Scanner</h1>
 
-<div id="status">
-Loading...
-</div>
+<div id="status">Loading...</div>
 
 <div id="results"></div>
 
 <script>
 
-const BASE =
-"https://fapi.binance.com";
+const BASE = "https://fapi.binance.com";
 
 function SMA(data, period){
 
  let sum = 0;
 
- for(
-   let i=data.length-period;
-   i<data.length;
-   i++
- ){
+ for(let i=data.length-period;i<data.length;i++){
    sum += data[i];
  }
 
  return sum / period;
 }
 
-async function getTopPairs(){
+async function getTop100(){
 
  const res =
  await fetch(
- BASE +
- "/fapi/v1/ticker/24hr"
+  BASE + "/fapi/v1/ticker/24hr"
  );
 
  const data =
@@ -93,16 +82,14 @@ async function getTopPairs(){
 
  return data
  .filter(
- x=>x.symbol.endsWith("USDT")
+  x=>x.symbol.endsWith("USDT")
  )
  .sort(
- (a,b)=>
- Number(b.quoteVolume)
- -
- Number(a.quoteVolume)
+  (a,b)=>
+  Number(b.quoteVolume) -
+  Number(a.quoteVolume)
  )
- .slice(0,30);
-
+ .slice(0,100);
 }
 
 async function getKlines(symbol){
@@ -118,183 +105,142 @@ async function getKlines(symbol){
 async function scan(){
 
  const status =
- document.getElementById(
- "status"
- );
+ document.getElementById("status");
 
- const resultsDiv =
- document.getElementById(
- "results"
- );
+ const results =
+ document.getElementById("results");
 
- status.innerHTML =
- "Scanning Binance...";
-
- resultsDiv.innerHTML="";
-
- try{
+ results.innerHTML = "";
 
  const pairs =
- await getTopPairs();
+ await getTop100();
 
- const results=[];
+ const found = [];
 
- let count=0;
+ let count = 0;
 
  for(const pair of pairs){
 
   count++;
 
   status.innerHTML =
-  `Scanning ${count}/${pairs.length}
-   ${pair.symbol}`;
+  `Scanning ${count}/100 : ${pair.symbol}`;
 
   try{
 
    const klines =
-   await getKlines(
-   pair.symbol
-   );
+   await getKlines(pair.symbol);
 
    if(
-   !Array.isArray(klines)
-   ||
-   klines.length < 200
+    !Array.isArray(klines)
+    ||
+    klines.length < 200
    ){
     continue;
    }
 
    const closes =
    klines.map(
-   x=>Number(x[4])
+    x=>Number(x[4])
    );
 
    const ma200 =
-   SMA(
-   closes,
-   200
-   );
+   SMA(closes,200);
 
    const price =
-   closes[
-   closes.length-1
-   ];
+   closes[closes.length-1];
 
    const distance =
    Math.abs(
-   price-ma200
-   ) /
-   ma200 *
-   100;
+    price-ma200
+   ) / ma200 * 100;
 
-   if(
-   price > ma200
-   ){
+   // MENYENTUH MA200 DAILY
+   if(distance <= 0.5){
 
-    results.push({
+    found.push({
 
-     symbol:
-     pair.symbol,
-
+     symbol:pair.symbol,
      price,
-
      ma200,
-
      distance
 
     });
-
    }
 
   }catch(err){
 
-   console.log(
-   pair.symbol,
-   err
-   );
+   console.log(err);
 
   }
+
  }
 
- results.sort(
+ found.sort(
  (a,b)=>
- a.distance-
+ a.distance -
  b.distance
  );
 
- let html="";
+ let html = "";
 
- results.forEach(c=>{
+ found.forEach(c=>{
 
  html += `
-
  <div class="card">
 
   <div class="symbol">
-  ${c.symbol}
+   ${c.symbol}
   </div>
 
-  <div class="green">
-  ✅ Di Atas MA200 Daily
+  <div class="touch">
+   🔥 MENYENTUH MA200 DAILY
   </div>
 
   <div class="small">
 
-  Distance:
-  ${c.distance.toFixed(2)}%
+   Distance:
+   ${c.distance.toFixed(2)}%
 
-  <br><br>
+   <br><br>
 
-  Price:
-  ${c.price.toFixed(6)}
+   Price:
+   ${c.price.toFixed(6)}
 
-  <br>
+   <br>
 
-  MA200 Daily:
-  ${c.ma200.toFixed(6)}
+   MA200:
+   ${c.ma200.toFixed(6)}
 
   </div>
 
  </div>
-
  `;
  });
 
- if(results.length===0){
+ if(found.length===0){
 
  html =
  `
  <div class="card">
- Tidak ada coin yang berada di atas MA200 Daily.
+ Tidak ada coin yang sedang menyentuh MA200 Daily (≤ 0.5%).
  </div>
  `;
  }
 
- resultsDiv.innerHTML =
- html;
+ results.innerHTML = html;
 
  status.innerHTML =
- `Update:
- ${new Date().toLocaleTimeString()}
- | ${results.length}
- coin ditemukan`;
-
- }catch(err){
-
- status.innerHTML =
- "Error mengambil data Binance";
-
- console.log(err);
-
- }
+ `Update ${new Date().toLocaleTimeString()}
+ | ${found.length} coin`;
 
 }
 
 scan();
 
 setInterval(
-scan,
-300000
+ scan,
+ 300000
 );
 
 </script>
