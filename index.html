@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<title>MA200 Daily Touch Scanner</title>
+<title>Top 30 Terdekat MA200 Daily</title>
 
 <style>
 
@@ -13,6 +12,7 @@ body{
  color:white;
  font-family:Arial;
  padding:20px;
+ margin:0;
 }
 
 h1{
@@ -27,10 +27,9 @@ h1{
 
 .card{
  background:#111827;
+ border-radius:12px;
  padding:15px;
  margin-bottom:10px;
- border-radius:12px;
- border-left:5px solid #22c55e;
 }
 
 .symbol{
@@ -38,9 +37,17 @@ h1{
  font-weight:bold;
 }
 
-.touch{
+.rank{
  color:#22c55e;
  font-weight:bold;
+}
+
+.above{
+ color:#22c55e;
+}
+
+.below{
+ color:#ef4444;
 }
 
 .small{
@@ -53,7 +60,7 @@ h1{
 
 <body>
 
-<h1>🔥 MA200 Daily Touch Scanner</h1>
+<h1>📈 Top 30 Coin Terdekat MA200 Daily</h1>
 
 <div id="status">
 Loading...
@@ -81,7 +88,7 @@ function SMA(data,period){
  return sum / period;
 }
 
-async function getTop30(){
+async function getPairs(){
 
  const res =
  await fetch(
@@ -102,7 +109,7 @@ async function getTop30(){
  -
  Number(a.quoteVolume)
  )
- .slice(0,30);
+ .slice(0,100);
 
 }
 
@@ -128,16 +135,18 @@ async function scan(){
  "results"
  );
 
- status.innerHTML =
- "Scanning...";
-
  resultsDiv.innerHTML =
  "";
 
- const pairs =
- await getTop30();
+ status.innerHTML =
+ "Scanning Binance...";
 
- const found = [];
+ try{
+
+ const pairs =
+ await getPairs();
+
+ const results = [];
 
  let count = 0;
 
@@ -146,7 +155,8 @@ async function scan(){
   count++;
 
   status.innerHTML =
-  `Scanning ${count}/30 ${pair.symbol}`;
+  `Scanning ${count}/${pairs.length}
+   ${pair.symbol}`;
 
   try{
 
@@ -174,42 +184,31 @@ async function scan(){
    200
    );
 
-   const last =
-   klines[
-   klines.length-1
+   const price =
+   closes[
+   closes.length-1
    ];
 
-   const high =
-   Number(last[2]);
+   const distance =
+   Math.abs(
+   price-ma200
+   ) / ma200 * 100;
 
-   const low =
-   Number(last[3]);
+   results.push({
 
-   const close =
-   Number(last[4]);
+    symbol:
+    pair.symbol,
 
-   const touched =
-   low <= ma200 &&
-   high >= ma200;
+    price,
 
-   if(touched){
+    ma200,
 
-    found.push({
+    distance,
 
-     symbol:
-     pair.symbol,
+    above:
+    price > ma200
 
-     close,
-
-     ma200,
-
-     low,
-
-     high
-
-    });
-
-   }
+   });
 
   }catch(err){
 
@@ -218,60 +217,61 @@ async function scan(){
   }
  }
 
+ results.sort(
+ (a,b)=>
+ a.distance -
+ b.distance
+ );
+
+ const top =
+ results.slice(0,30);
+
  let html = "";
 
- found.forEach(c=>{
+ top.forEach((c,index)=>{
 
  html += `
  <div class="card">
 
- <div class="symbol">
- ${c.symbol}
- </div>
+  <div class="symbol">
+   #${index+1}
+   ${c.symbol}
+  </div>
 
- <div class="touch">
- 🔥 MENYENTUH MA200 DAILY
- </div>
+  <div class="rank">
+   Jarak:
+   ${c.distance.toFixed(2)}%
+  </div>
 
- <div class="small">
+  <div class="${
+  c.above
+  ? "above"
+  : "below"
+  }">
 
- Close:
- ${c.close}
+  ${
+  c.above
+  ? "⬆️ Di Atas MA200"
+  : "⬇️ Di Bawah MA200"
+  }
 
- <br>
+  </div>
 
- MA200:
- ${c.ma200.toFixed(4)}
+  <div class="small">
 
- <br>
+  Price:
+  ${c.price.toFixed(6)}
 
- Low:
- ${c.low}
+  <br>
 
- <br>
+  MA200:
+  ${c.ma200.toFixed(6)}
 
- High:
- ${c.high}
-
- </div>
+  </div>
 
  </div>
  `;
  });
-
- if(found.length===0){
-
- html =
- `
- <div class="card">
-
- Tidak ada coin Top 30
- yang sedang menyentuh
- MA200 Daily.
-
- </div>
- `;
- }
 
  resultsDiv.innerHTML =
  html;
@@ -279,8 +279,16 @@ async function scan(){
  status.innerHTML =
  `Update:
  ${new Date().toLocaleTimeString()}
- | ${found.length}
- Coin`;
+ | Top 30 Terdekat MA200 Daily`;
+
+ }catch(err){
+
+ status.innerHTML =
+ "Error mengambil data Binance";
+
+ console.log(err);
+
+ }
 
 }
 
