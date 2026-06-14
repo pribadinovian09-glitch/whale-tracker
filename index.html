@@ -1,266 +1,101 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Crypto Pump Detector</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: #0a0a0f; color: #e0e0e0; font-family: 'Inter', 'Segoe UI', sans-serif; min-height: 100vh; padding-bottom: 48px; }
+# ==========================================
+# SCANNER COIN BARU MENYENTUH MA200 DAILY
+# Binance Spot
+# ==========================================
 
-  .header { background: #0d1117; border-bottom: 1px solid #21262d; padding: 16px; position: sticky; top: 0; z-index: 10; }
-  .header h1 { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
-  .header p { font-size: 12px; color: #8b949e; margin-bottom: 10px; }
-  .badge { font-size: 10px; background: #00ff8820; color: #00ff88; border: 1px solid #00ff8840; border-radius: 20px; padding: 2px 8px; margin-left: auto; }
+import requests
+import pandas as pd
+import ta
+from datetime import datetime
 
-  .controls { display: flex; gap: 6px; margin-bottom: 8px; }
-  .controls input { flex: 1; background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 8px 12px; color: #e0e0e0; font-size: 13px; outline: none; }
-  .controls select { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 8px 9px; color: #e0e0e0; font-size: 12px; outline: none; }
+BASE_URL = "https://api.binance.com"
 
-  .btn-scan { background: linear-gradient(135deg, #238636, #2ea043); border: none; border-radius: 8px; padding: 9px 20px; color: #fff; font-size: 13px; font-weight: 700; cursor: pointer; }
-  .btn-scan:disabled { background: #21262d; cursor: not-allowed; opacity: 0.7; }
-  .btn-row { display: flex; align-items: center; gap: 10px; }
-  .status-txt { font-size: 10px; color: #484f58; margin-left: auto; }
+# Ambil semua pair USDT
+exchange_info = requests.get(f"{BASE_URL}/api/v3/exchangeInfo").json()
 
-  .content { max-width: 600px; margin: 0 auto; padding: 12px 14px; }
+symbols = [
+    s["symbol"]
+    for s in exchange_info["symbols"]
+    if s["quoteAsset"] == "USDT"
+    and s["status"] == "TRADING"
+]
 
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-bottom: 12px; }
-  .stat-card { background: #161b22; border: 1px solid #21262d; border-radius: 9px; padding: 9px 6px; text-align: center; }
-  .stat-val { font-size: 20px; font-weight: 700; }
-  .stat-lbl { font-size: 10px; color: #8b949e; margin-top: 2px; }
+results = []
 
-  .empty { text-align: center; padding: 60px 20px; }
-  .empty .icon { font-size: 50px; margin-bottom: 12px; }
-  .empty .title { color: #e0e0e0; font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-  .empty .sub { color: #8b949e; font-size: 13px; }
-
-  .loading { text-align: center; padding: 50px 20px; }
-  .loading .icon { font-size: 42px; margin-bottom: 10px; animation: bounce 1s ease-in-out infinite; }
-  .loading .title { color: #e0e0e0; font-weight: 600; margin-bottom: 4px; }
-  .loading .sub { color: #8b949e; font-size: 12px; }
-
-  .card { background: #161b22; border: 1px solid #21262d; border-radius: 11px; padding: 11px 13px; margin-bottom: 7px; position: relative; overflow: hidden; }
-  .card.strong { border-color: #00ff8830; }
-  .card.potential { border-color: #ffd70030; }
-  .card-bg { position: absolute; left: 0; top: 0; bottom: 0; pointer-events: none; }
-
-  .card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
-  .coin-sym { font-weight: 800; font-size: 15px; color: #fff; }
-  .coin-name { font-size: 11px; color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100px; }
-  .signal-badge { margin-left: auto; font-size: 10px; font-weight: 700; border-radius: 20px; padding: 2px 9px; white-space: nowrap; }
-
-  .card-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 7px; }
-  .card-item .lbl { font-size: 10px; color: #8b949e; margin-bottom: 1px; }
-  .card-item .val { font-size: 12px; font-weight: 700; color: #e0e0e0; }
-
-  .progress-bar { height: 3px; background: #21262d; border-radius: 3px; margin-bottom: 6px; overflow: hidden; }
-  .progress-fill { height: 100%; border-radius: 3px; transition: width .4s; }
-
-  .reason { font-size: 11px; color: #8b949e; line-height: 1.5; }
-
-  .disclaimer { margin-top: 14px; background: #ff8c0010; border: 1px solid #ff8c0025; border-radius: 9px; padding: 10px 13px; font-size: 11px; color: #ff8c00; line-height: 1.6; }
-
-  @keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-  @keyframes spin { to { transform: rotate(360deg); } }
-</style>
-</head>
-<body>
-
-<div class="header">
-  <div style="max-width:600px; margin:0 auto;">
-    <h1>📡 Crypto Pump Detector <span class="badge">LIVE</span></h1>
-    <p>Deteksi coin berpotensi pump via analisis AI + simulasi pasar</p>
-    <div class="controls">
-      <input type="text" id="searchInput" placeholder="🔍 Cari coin..." oninput="filterCoins()">
-      <select id="scoreFilter" onchange="filterCoins()">
-        <option value="0">Semua</option>
-        <option value="60">Potential+</option>
-        <option value="80">Strong only</option>
-      </select>
-    </div>
-    <div class="btn-row">
-      <button class="btn-scan" id="scanBtn" onclick="scan()">🔄 Scan Sekarang</button>
-      <span class="status-txt" id="statusTxt"></span>
-    </div>
-  </div>
-</div>
-
-<div class="content">
-  <div id="statsBar" style="display:none;" class="stats">
-    <div class="stat-card"><div class="stat-val" id="statTotal" style="color:#e0e0e0">0</div><div class="stat-lbl">Ditemukan</div></div>
-    <div class="stat-card"><div class="stat-val" id="statPotential" style="color:#ffd700">0</div><div class="stat-lbl">⚡ Potential+</div></div>
-    <div class="stat-card"><div class="stat-val" id="statStrong" style="color:#00ff88">0</div><div class="stat-lbl">🚀 Strong</div></div>
-  </div>
-  <div id="mainArea">
-    <div class="empty">
-      <div class="icon">📡</div>
-      <div class="title">Siap melakukan scan</div>
-      <div class="sub">Tekan <b style="color:#00ff88">Scan Sekarang</b> untuk deteksi pump</div>
-    </div>
-  </div>
-  <div id="disclaimer" style="display:none;" class="disclaimer">
-    ⚠️ <b>Disclaimer:</b> Bukan saran investasi. Data dari analisis AI/simulasi pasar. Selalu lakukan riset sendiri (DYOR) sebelum trading. Pump cepat bisa diikuti dump cepat.
-  </div>
-</div>
-
-<script>
-const BASE_DATA = [
-  { symbol:"SOL",  name:"Solana",        price:185.4,     change24h:18.5, volume24h:3200000000, score:92, reason:"Volume 4x normal, breakout area resistance kuat" },
-  { symbol:"PEPE", name:"Pepe",          price:0.0000142, change24h:35.2, volume24h:890000000,  score:88, reason:"Meme coin rally besar, komunitas aktif" },
-  { symbol:"WIF",  name:"Dogwifhat",     price:2.87,      change24h:22.1, volume24h:420000000,  score:85, reason:"Listing baru di CEX besar, FOMO tinggi" },
-  { symbol:"FET",  name:"Fetch.ai",      price:2.18,      change24h:11.2, volume24h:234000000,  score:80, reason:"AI+crypto narasi kuat, partnership baru" },
-  { symbol:"ARB",  name:"Arbitrum",      price:1.23,      change24h:14.7, volume24h:680000000,  score:78, reason:"Update L2, yield staking naik signifikan" },
-  { symbol:"TIA",  name:"Celestia",      price:8.45,      change24h:12.3, volume24h:310000000,  score:74, reason:"Partnership modular blockchain terbaru" },
-  { symbol:"INJ",  name:"Injective",     price:28.6,      change24h:9.8,  volume24h:245000000,  score:70, reason:"DeFi TVL naik, volume perdagangan meningkat" },
-  { symbol:"RNDR", name:"Render",        price:7.92,      change24h:8.4,  volume24h:198000000,  score:65, reason:"Demand GPU computing naik, AI narrative" },
-  { symbol:"SUI",  name:"Sui",           price:1.67,      change24h:7.2,  volume24h:176000000,  score:61, reason:"Ekosistem DeFi berkembang, TVL naik" },
-  { symbol:"NEAR", name:"NEAR Protocol", price:5.34,      change24h:6.1,  volume24h:142000000,  score:55, reason:"Developer activity tinggi, TVL stabil" },
-  { symbol:"OP",   name:"Optimism",      price:2.45,      change24h:5.8,  volume24h:156000000,  score:52, reason:"L2 season potensi, belum breakout" },
-  { symbol:"APT",  name:"Aptos",         price:9.21,      change24h:5.3,  volume24h:128000000,  score:50, reason:"Move ecosystem tumbuh, volume masih rendah" },
-  { symbol:"DOGE", name:"Dogecoin",      price:0.162,     change24h:9.1,  volume24h:520000000,  score:67, reason:"Social media hype naik, whale accumulation" },
-  { symbol:"AVAX", name:"Avalanche",     price:38.7,      change24h:7.8,  volume24h:310000000,  score:63, reason:"Subnet baru aktif, staking APY naik" },
-  { symbol:"LINK", name:"Chainlink",     price:16.4,      change24h:6.5,  volume24h:287000000,  score:59, reason:"Data oracle demand naik, integrasi baru" },
-];
-
-let allCoins = [];
-
-function rnd(min, max) { return min + Math.random() * (max - min); }
-
-function generateData() {
-  return BASE_DATA
-    .sort(() => Math.random() - 0.5)
-    .map(c => {
-      const score = Math.min(100, Math.max(30, Math.round(c.score + rnd(-10, 10))));
-      const change = +(c.change24h * rnd(0.65, 1.4)).toFixed(2);
-      const vol = Math.round(c.volume24h * rnd(0.5, 1.5));
-      const price = +(c.price * rnd(0.92, 1.08));
-      let signal = score >= 80 ? "STRONG PUMP" : score >= 60 ? "POTENTIAL PUMP" : "WATCH";
-      return { ...c, score, change24h: change, volume24h: vol, price, signal };
-    })
-    .sort((a, b) => b.score - a.score);
-}
-
-function fmtPrice(p) {
-  if (!p && p !== 0) return "-";
-  if (p < 0.0001) return "$" + p.toExponential(3);
-  if (p < 1) return "$" + p.toFixed(5);
-  if (p < 100) return "$" + p.toFixed(2);
-  return "$" + p.toLocaleString();
-}
-
-function fmtVol(n) {
-  if (!n) return "-";
-  if (n >= 1e9) return "$" + (n/1e9).toFixed(1) + "B";
-  if (n >= 1e6) return "$" + (n/1e6).toFixed(0) + "M";
-  return "$" + (n/1e3).toFixed(0) + "K";
-}
-
-function getSig(score) {
-  if (score >= 80) return { color:"#00ff88", bg:"#00ff8815", border:"#00ff8835", icon:"🚀", label:"STRONG PUMP", cls:"strong" };
-  if (score >= 60) return { color:"#ffd700", bg:"#ffd70015", border:"#ffd70035", icon:"⚡", label:"POTENTIAL",   cls:"potential" };
-  return              { color:"#ff8c00", bg:"#ff8c0015", border:"#ff8c0035", icon:"👀", label:"WATCH",        cls:"" };
-}
-
-function renderCoins(coins) {
-  const area = document.getElementById("mainArea");
-  if (coins.length === 0) {
-    area.innerHTML = `<div class="empty"><div class="icon">🔍</div><div class="title">Tidak ada coin yang cocok</div><div class="sub">Coba ubah filter atau kurangi minimum score</div></div>`;
-    return;
-  }
-  area.innerHTML = coins.map((c, i) => {
-    const s = getSig(c.score);
-    return `
-    <div class="card ${s.cls}">
-      <div class="card-bg" style="width:${c.score}%;background:${s.color}07;"></div>
-      <div class="card-top">
-        <span style="font-size:11px;color:#484f58;min-width:18px;">${i+1}</span>
-        <span class="coin-sym">${c.symbol}</span>
-        <span class="coin-name">${c.name}</span>
-        <span class="signal-badge" style="color:${s.color};background:${s.bg};border:1px solid ${s.border};">${s.icon} ${s.label}</span>
-      </div>
-      <div class="card-grid">
-        <div class="card-item"><div class="lbl">Harga</div><div class="val">${fmtPrice(c.price)}</div></div>
-        <div class="card-item"><div class="lbl">24h %</div><div class="val" style="color:#00ff88;">+${c.change24h.toFixed(1)}%</div></div>
-        <div class="card-item"><div class="lbl">Volume</div><div class="val">${fmtVol(c.volume24h)}</div></div>
-        <div class="card-item"><div class="lbl">Score</div><div class="val" style="color:${s.color};">${c.score}</div></div>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${c.score}%;background:linear-gradient(90deg,${s.color}60,${s.color});"></div></div>
-      <div class="reason">💡 ${c.reason}</div>
-    </div>`;
-  }).join("");
-}
-
-function filterCoins() {
-  const q = document.getElementById("searchInput").value.toLowerCase();
-  const minScore = Number(document.getElementById("scoreFilter").value);
-  const filtered = allCoins.filter(c =>
-    c.score >= minScore &&
-    (q === "" || c.symbol.toLowerCase().includes(q) || c.name.toLowerCase().includes(q))
-  );
-  renderCoins(filtered);
-}
-
-async function scan() {
-  const btn = document.getElementById("scanBtn");
-  const statusTxt = document.getElementById("statusTxt");
-  btn.disabled = true;
-  btn.textContent = "⏳ Scanning...";
-  document.getElementById("statsBar").style.display = "none";
-  document.getElementById("disclaimer").style.display = "none";
-  document.getElementById("mainArea").innerHTML = `
-    <div class="loading">
-      <div class="icon">🤖</div>
-      <div class="title">AI sedang menganalisis pasar...</div>
-      <div class="sub">Mohon tunggu beberapa detik</div>
-    </div>`;
-
-  // Try Claude API
-  let gotAPI = false;
-  try {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1000,
-        system: "You are a crypto analyst. Respond with ONLY a JSON array, no other text. No markdown. Just [ ... ]",
-        messages: [{
-          role: "user",
-          content: "List 12 crypto coins with pump signals today. Each object: symbol, name, price(number), change24h(number), volume24h(number), score(0-100), signal(STRONG PUMP/POTENTIAL PUMP/WATCH), reason(Indonesian max 70 chars). Reply ONLY with the JSON array."
-        }]
-      })
-    });
-    if (res.ok) {
-      const data = await res.json();
-      const text = (data?.content?.[0]?.text || "").trim();
-      const s = text.indexOf("["), e = text.lastIndexOf("]");
-      if (s !== -1 && e > s) {
-        const parsed = JSON.parse(text.slice(s, e+1));
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          allCoins = parsed.sort((a,b) => (b.score||0)-(a.score||0));
-          gotAPI = true;
-          statusTxt.textContent = "✅ AI · " + new Date().toLocaleTimeString("id-ID");
+for symbol in symbols:
+    try:
+        url = f"{BASE_URL}/api/v3/klines"
+        params = {
+            "symbol": symbol,
+            "interval": "1d",
+            "limit": 250
         }
-      }
-    }
-  } catch(e) {}
 
-  if (!gotAPI) {
-    allCoins = generateData();
-    statusTxt.textContent = "⚡ Simulasi · " + new Date().toLocaleTimeString("id-ID");
-  }
+        data = requests.get(url, params=params, timeout=10).json()
 
-  // Update stats
-  document.getElementById("statsBar").style.display = "grid";
-  document.getElementById("statTotal").textContent = allCoins.length;
-  document.getElementById("statPotential").textContent = allCoins.filter(c=>c.score>=60).length;
-  document.getElementById("statStrong").textContent = allCoins.filter(c=>c.score>=80).length;
-  document.getElementById("disclaimer").style.display = "block";
+        if len(data) < 200:
+            continue
 
-  filterCoins();
-  btn.disabled = false;
-  btn.textContent = "🔄 Scan Sekarang";
-}
-</script>
-</body>
-</html>
+        df = pd.DataFrame(data)
+
+        df.columns = [
+            "open_time","open","high","low","close",
+            "volume","close_time","qav",
+            "trades","tbav","tqav","ignore"
+        ]
+
+        df["close"] = df["close"].astype(float)
+        df["high"] = df["high"].astype(float)
+        df["low"] = df["low"].astype(float)
+
+        # MA200 Daily
+        df["MA200"] = ta.trend.sma_indicator(
+            df["close"],
+            window=200
+        )
+
+        last = df.iloc[-1]
+
+        ma200 = last["MA200"]
+
+        if pd.isna(ma200):
+            continue
+
+        high = last["high"]
+        low = last["low"]
+        close = last["close"]
+
+        # Menyentuh MA200
+        touched = low <= ma200 <= high
+
+        if touched:
+
+            distance_pct = abs(close - ma200) / ma200 * 100
+
+            results.append({
+                "Coin": symbol,
+                "Close": round(close, 6),
+                "MA200": round(ma200, 6),
+                "Distance %": round(distance_pct, 3)
+            })
+
+    except Exception:
+        pass
+
+# Urutkan terdekat
+results = sorted(results, key=lambda x: x["Distance %"])
+
+print("\n===================================")
+print("COIN BARU MENYENTUH MA200 DAILY")
+print("===================================\n")
+
+if len(results) == 0:
+    print("Tidak ada coin yang menyentuh MA200 hari ini.")
+else:
+    for i, r in enumerate(results[:30], start=1):
+        print(
+            f"{i:02d}. {r['Coin']:12} "
+            f"Close={r['Close']} "
+            f"MA200={r['MA200']} "
+            f"Dist={r['Distance %']}%"
+        )
