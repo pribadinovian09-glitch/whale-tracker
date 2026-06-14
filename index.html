@@ -1,291 +1,305 @@
 <!DOCTYPE html>
-<html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<title>MA200 Daily Touch Scanner</title>
-<title>Top 30 Terdekat MA200 Daily</title>
+<title>Fresh Touch MA200 Daily Scanner</title>
 
 <style>
-
-@@ -13,6 +12,7 @@
- color:white;
- font-family:Arial;
- padding:20px;
- margin:0;
+body{
+    background:#0f172a;
+    color:white;
+    font-family:Arial,sans-serif;
+    padding:20px;
+    margin:0;
 }
 
 h1{
-@@ -27,22 +27,29 @@
+    text-align:center;
+}
+
+#status{
+    text-align:center;
+    margin-bottom:20px;
+    color:#94a3b8;
+}
 
 .card{
- background:#111827;
- border-radius:12px;
- padding:15px;
- margin-bottom:10px;
- border-radius:12px;
- border-left:5px solid #22c55e;
+    background:#111827;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:12px;
+    border-left:5px solid #22c55e;
 }
 
 .symbol{
- font-size:20px;
- font-weight:bold;
+    font-size:20px;
+    font-weight:bold;
 }
 
 .touch{
-.rank{
- color:#22c55e;
- font-weight:bold;
-}
-
-.above{
- color:#22c55e;
-}
-
-.below{
- color:#ef4444;
+    color:#22c55e;
+    font-weight:bold;
+    margin-top:8px;
 }
 
 .small{
- color:#cbd5e1;
- margin-top:10px;
-@@ -53,7 +60,7 @@
+    color:#cbd5e1;
+    margin-top:10px;
+}
+</style>
+</head>
 
 <body>
 
-<h1>🔥 MA200 Daily Touch Scanner</h1>
-<h1>📈 Top 30 Coin Terdekat MA200 Daily</h1>
+<h1>🔥 Fresh Touch MA200 Daily</h1>
 
 <div id="status">
 Loading...
-@@ -81,7 +88,7 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
- return sum / period;
+</div>
+
+<div id="results"></div>
+
+<script>
+
+function sma(arr, period){
+
+    if(arr.length < period) return null;
+
+    let sum = 0;
+
+    for(let i=arr.length-period;i<arr.length;i++){
+        sum += arr[i];
+    }
+
+    return sum / period;
 }
 
-async function getTop30(){
 async function getPairs(){
 
- const res =
- await fetch(
-@@ -102,7 +109,7 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
- -
- Number(a.quoteVolume)
- )
- .slice(0,30);
- .slice(0,100);
+    const res = await fetch(
+    "https://api.binance.com/api/v3/ticker/24hr"
+    );
+
+    const data = await res.json();
+
+    return data
+    .filter(
+        x =>
+        x.symbol.endsWith("USDT")
+    )
+    .sort(
+        (a,b)=>
+        Number(b.quoteVolume) -
+        Number(a.quoteVolume)
+    )
+    .slice(0,100);
 
 }
 
-@@ -128,16 +135,18 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
- "results"
- );
+async function scan(){
 
- status.innerHTML =
- "Scanning...";
+    const status =
+    document.getElementById("status");
 
- resultsDiv.innerHTML =
- "";
+    const resultsDiv =
+    document.getElementById("results");
 
- status.innerHTML =
- "Scanning Binance...";
+    status.innerHTML =
+    "Scanning Binance...";
 
- try{
+    resultsDiv.innerHTML = "";
 
- const pairs =
- await getTop30();
- await getPairs();
+    try{
 
- const found = [];
- const results = [];
+        const pairs =
+        await getPairs();
 
- let count = 0;
+        const results = [];
 
-@@ -146,7 +155,8 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
-  count++;
+        let count = 0;
 
-  status.innerHTML =
-  `Scanning ${count}/30 ${pair.symbol}`;
-  `Scanning ${count}/${pairs.length}
-   ${pair.symbol}`;
+        for(const pair of pairs){
 
-  try{
+            count++;
 
-@@ -174,42 +184,31 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
-   200
-   );
+            status.innerHTML =
+            `Scanning ${count}/${pairs.length} ${pair.symbol}`;
 
-   const last =
-   klines[
-   klines.length-1
-   const price =
-   closes[
-   closes.length-1
-   ];
+            try{
 
-   const high =
-   Number(last[2]);
+                const response =
+                await fetch(
+                `https://api.binance.com/api/v3/klines?symbol=${pair.symbol}&interval=1d&limit=250`
+                );
 
-   const low =
-   Number(last[3]);
+                const klines =
+                await response.json();
 
-   const close =
-   Number(last[4]);
-   const distance =
-   Math.abs(
-   price-ma200
-   ) / ma200 * 100;
+                if(
+                    !Array.isArray(klines) ||
+                    klines.length < 200
+                ){
+                    continue;
+                }
 
-   const touched =
-   low <= ma200 &&
-   high >= ma200;
-   results.push({
+                const closes =
+                klines.map(
+                    k => Number(k[4])
+                );
 
-   if(touched){
-    symbol:
-    pair.symbol,
+                const ma200Today =
+                sma(closes,200);
 
-    found.push({
-    price,
+                const prevCloses =
+                closes.slice(
+                    0,
+                    closes.length-1
+                );
 
-     symbol:
-     pair.symbol,
-    ma200,
+                const ma200Prev =
+                sma(
+                    prevCloses,
+                    200
+                );
 
-     close,
-    distance,
+                const last =
+                klines[
+                klines.length-1
+                ];
 
-     ma200,
-    above:
-    price > ma200
+                const prev =
+                klines[
+                klines.length-2
+                ];
 
-     low,
+                const lowToday =
+                Number(last[3]);
 
-     high
+                const highToday =
+                Number(last[2]);
 
-    });
+                const lowPrev =
+                Number(prev[3]);
 
-   }
-   });
+                const highPrev =
+                Number(prev[2]);
 
-  }catch(err){
+                const touchToday =
+                lowToday <= ma200Today &&
+                highToday >= ma200Today;
 
-@@ -218,69 +217,78 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
-  }
- }
+                const touchPrev =
+                lowPrev <= ma200Prev &&
+                highPrev >= ma200Prev;
 
- results.sort(
- (a,b)=>
- a.distance -
- b.distance
- );
+                if(
+                    touchToday &&
+                    !touchPrev
+                ){
 
- const top =
- results.slice(0,30);
+                    results.push({
 
- let html = "";
+                        symbol:
+                        pair.symbol,
 
- found.forEach(c=>{
- top.forEach((c,index)=>{
+                        close:
+                        Number(last[4]),
 
- html += `
- <div class="card">
+                        ma200:
+                        ma200Today,
 
- <div class="symbol">
- ${c.symbol}
- </div>
+                        volume:
+                        Number(
+                        pair.quoteVolume
+                        )
 
- <div class="touch">
- 🔥 MENYENTUH MA200 DAILY
- </div>
+                    });
 
- <div class="small">
+                }
 
- Close:
- ${c.close}
+            }catch(e){}
 
- <br>
-  <div class="symbol">
-   #${index+1}
-   ${c.symbol}
-  </div>
+        }
 
-  <div class="rank">
-   Jarak:
-   ${c.distance.toFixed(2)}%
-  </div>
+        results.sort(
+            (a,b)=>
+            b.volume - a.volume
+        );
 
-  <div class="${
-  c.above
-  ? "above"
-  : "below"
-  }">
+        let html = "";
 
-  ${
-  c.above
-  ? "⬆️ Di Atas MA200"
-  : "⬇️ Di Bawah MA200"
-  }
+        if(results.length===0){
 
- MA200:
- ${c.ma200.toFixed(4)}
-  </div>
+            html =
+            `
+            <div class="card">
+            Tidak ada coin yang baru menyentuh MA200 Daily.
+            </div>
+            `;
 
- <br>
-  <div class="small">
+        }else{
 
- Low:
- ${c.low}
-  Price:
-  ${c.price.toFixed(6)}
+            results.forEach(
+            (c,index)=>{
 
- <br>
-  <br>
+                html +=
+                `
+                <div class="card">
 
- High:
- ${c.high}
-  MA200:
-  ${c.ma200.toFixed(6)}
+                    <div class="symbol">
+                    #${index+1}
+                    ${c.symbol}
+                    </div>
 
- </div>
-  </div>
+                    <div class="touch">
+                    🔥 Fresh Touch MA200 Daily
+                    </div>
 
- </div>
- `;
- });
+                    <div class="small">
 
- if(found.length===0){
+                    Close:
+                    ${c.close.toFixed(6)}
 
- html =
- `
- <div class="card">
+                    <br><br>
 
- Tidak ada coin Top 30
- yang sedang menyentuh
- MA200 Daily.
+                    MA200:
+                    ${c.ma200.toFixed(6)}
 
- </div>
- `;
- }
+                    </div>
 
- resultsDiv.innerHTML =
- html;
+                </div>
+                `;
+            });
 
- status.innerHTML =
- `Update:
- ${new Date().toLocaleTimeString()}
- | ${found.length}
- Coin`;
- | Top 30 Terdekat MA200 Daily`;
+        }
 
- }catch(err){
+        resultsDiv.innerHTML =
+        html;
 
- status.innerHTML =
- "Error mengambil data Binance";
+        status.innerHTML =
+        `Update ${new Date().toLocaleTimeString()} | ${results.length} Coin`;
 
- console.log(err);
+    }catch(err){
 
- }
+        status.innerHTML =
+        "Error mengambil data Binance";
+
+        console.log(err);
+
+    }
 
 }
+
+scan();
+
+setInterval(
+    scan,
+    300000
+);
+
+</script>
+
+</body>
+</html>
