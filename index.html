@@ -1,175 +1,291 @@
-import requests
-import pandas as pd
-from ta.trend import SMAIndicator
+<!DOCTYPE html>
+<html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-BINANCE_URL = "https://api.binance.com"
+<title>MA200 Daily Touch Scanner</title>
+<title>Top 30 Terdekat MA200 Daily</title>
 
+<style>
 
-def get_symbols():
-    data = requests.get(
-        f"{BINANCE_URL}/api/v3/exchangeInfo",
-        timeout=20
-    ).json()
+@@ -13,6 +12,7 @@
+ color:white;
+ font-family:Arial;
+ padding:20px;
+ margin:0;
+}
 
-    symbols = []
+h1{
+@@ -27,22 +27,29 @@
 
-    for s in data["symbols"]:
-        if (
-            s["status"] == "TRADING"
-            and s["quoteAsset"] == "USDT"
-            and "SPOT" in s["permissions"]
-        ):
-            symbols.append(s["symbol"])
+.card{
+ background:#111827;
+ border-radius:12px;
+ padding:15px;
+ margin-bottom:10px;
+ border-radius:12px;
+ border-left:5px solid #22c55e;
+}
 
-    return symbols
+.symbol{
+ font-size:20px;
+ font-weight:bold;
+}
 
+.touch{
+.rank{
+ color:#22c55e;
+ font-weight:bold;
+}
 
-def get_klines(symbol):
-    try:
-        data = requests.get(
-            f"{BINANCE_URL}/api/v3/klines",
-            params={
-                "symbol": symbol,
-                "interval": "1d",
-                "limit": 250
-            },
-            timeout=20
-        ).json()
+.above{
+ color:#22c55e;
+}
 
-        if not isinstance(data, list):
-            return None
+.below{
+ color:#ef4444;
+}
 
-        df = pd.DataFrame(data)
+.small{
+ color:#cbd5e1;
+ margin-top:10px;
+@@ -53,7 +60,7 @@
 
-        df = df.iloc[:, :6]
+<body>
 
-        df.columns = [
-            "time",
-            "open",
-            "high",
-            "low",
-            "close",
-            "volume"
-        ]
+<h1>🔥 MA200 Daily Touch Scanner</h1>
+<h1>📈 Top 30 Coin Terdekat MA200 Daily</h1>
 
-        for col in ["open", "high", "low", "close", "volume"]:
-            df[col] = df[col].astype(float)
+<div id="status">
+Loading...
+@@ -81,7 +88,7 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+ return sum / period;
+}
 
-        return df
+async function getTop30(){
+async function getPairs(){
 
-    except:
-        return None
+ const res =
+ await fetch(
+@@ -102,7 +109,7 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+ -
+ Number(a.quoteVolume)
+ )
+ .slice(0,30);
+ .slice(0,100);
 
+}
 
-def fresh_touch_ma200(df):
+@@ -128,16 +135,18 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+ "results"
+ );
 
-    if len(df) < 210:
-        return None
+ status.innerHTML =
+ "Scanning...";
 
-    df["ma200"] = SMAIndicator(
-        close=df["close"],
-        window=200
-    ).sma_indicator()
+ resultsDiv.innerHTML =
+ "";
 
-    today = df.iloc[-1]
-    yesterday = df.iloc[-2]
+ status.innerHTML =
+ "Scanning Binance...";
 
-    ma_today = today["ma200"]
+ try{
 
-    if pd.isna(ma_today):
-        return None
+ const pairs =
+ await getTop30();
+ await getPairs();
 
-    touch_today = (
-        today["low"] <= ma_today <= today["high"]
-    )
+ const found = [];
+ const results = [];
 
-    if not touch_today:
-        return None
+ let count = 0;
 
-    ma_yesterday = yesterday["ma200"]
+@@ -146,7 +155,8 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+  count++;
 
-    touch_yesterday = (
-        yesterday["low"] <= ma_yesterday <= yesterday["high"]
-    )
+  status.innerHTML =
+  `Scanning ${count}/30 ${pair.symbol}`;
+  `Scanning ${count}/${pairs.length}
+   ${pair.symbol}`;
 
-    if touch_yesterday:
-        return None
+  try{
 
-    for i in range(-12, -2):
+@@ -174,42 +184,31 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+   200
+   );
 
-        row = df.iloc[i]
+   const last =
+   klines[
+   klines.length-1
+   const price =
+   closes[
+   closes.length-1
+   ];
 
-        ma = row["ma200"]
+   const high =
+   Number(last[2]);
 
-        if pd.isna(ma):
-            continue
+   const low =
+   Number(last[3]);
 
-        if row["low"] <= ma <= row["high"]:
-            return None
+   const close =
+   Number(last[4]);
+   const distance =
+   Math.abs(
+   price-ma200
+   ) / ma200 * 100;
 
-    distance = abs(
-        today["close"] - ma_today
-    ) / ma_today * 100
+   const touched =
+   low <= ma200 &&
+   high >= ma200;
+   results.push({
 
-    return {
-        "close": today["close"],
-        "ma200": ma_today,
-        "distance": distance,
-        "volume": today["volume"]
-    }
+   if(touched){
+    symbol:
+    pair.symbol,
 
+    found.push({
+    price,
 
-def main():
+     symbol:
+     pair.symbol,
+    ma200,
 
-    symbols = get_symbols()
+     close,
+    distance,
 
-    results = []
+     ma200,
+    above:
+    price > ma200
 
-    print(f"Scanning {len(symbols)} coins...")
+     low,
 
-    for symbol in symbols:
+     high
 
-        df = get_klines(symbol)
+    });
 
-        if df is None:
-            continue
+   }
+   });
 
-        result = fresh_touch_ma200(df)
+  }catch(err){
 
-        if result:
+@@ -218,69 +217,78 @@ <h1>🔥 MA200 Daily Touch Scanner</h1>
+  }
+ }
 
-            results.append({
-                "symbol": symbol,
-                **result
-            })
+ results.sort(
+ (a,b)=>
+ a.distance -
+ b.distance
+ );
 
-            print(f"FOUND -> {symbol}")
+ const top =
+ results.slice(0,30);
 
-    results = sorted(
-        results,
-        key=lambda x: x["distance"]
-    )
+ let html = "";
 
-    print("\n")
-    print("=" * 100)
-    print("FRESH TOUCH MA200 DAILY")
-    print("=" * 100)
+ found.forEach(c=>{
+ top.forEach((c,index)=>{
 
-    if not results:
-        print("No coins found.")
-        return
+ html += `
+ <div class="card">
 
-    for i, r in enumerate(results[:30], start=1):
+ <div class="symbol">
+ ${c.symbol}
+ </div>
 
-        print(
-            f"{i:02d}. "
-            f"{r['symbol']:12} "
-            f"Close={r['close']:.6f} "
-            f"MA200={r['ma200']:.6f} "
-            f"Distance={r['distance']:.2f}% "
-            f"Volume={r['volume']:.0f}"
-        )
+ <div class="touch">
+ 🔥 MENYENTUH MA200 DAILY
+ </div>
 
+ <div class="small">
 
-if __name__ == "__main__":
-    main()
+ Close:
+ ${c.close}
+
+ <br>
+  <div class="symbol">
+   #${index+1}
+   ${c.symbol}
+  </div>
+
+  <div class="rank">
+   Jarak:
+   ${c.distance.toFixed(2)}%
+  </div>
+
+  <div class="${
+  c.above
+  ? "above"
+  : "below"
+  }">
+
+  ${
+  c.above
+  ? "⬆️ Di Atas MA200"
+  : "⬇️ Di Bawah MA200"
+  }
+
+ MA200:
+ ${c.ma200.toFixed(4)}
+  </div>
+
+ <br>
+  <div class="small">
+
+ Low:
+ ${c.low}
+  Price:
+  ${c.price.toFixed(6)}
+
+ <br>
+  <br>
+
+ High:
+ ${c.high}
+  MA200:
+  ${c.ma200.toFixed(6)}
+
+ </div>
+  </div>
+
+ </div>
+ `;
+ });
+
+ if(found.length===0){
+
+ html =
+ `
+ <div class="card">
+
+ Tidak ada coin Top 30
+ yang sedang menyentuh
+ MA200 Daily.
+
+ </div>
+ `;
+ }
+
+ resultsDiv.innerHTML =
+ html;
+
+ status.innerHTML =
+ `Update:
+ ${new Date().toLocaleTimeString()}
+ | ${found.length}
+ Coin`;
+ | Top 30 Terdekat MA200 Daily`;
+
+ }catch(err){
+
+ status.innerHTML =
+ "Error mengambil data Binance";
+
+ console.log(err);
+
+ }
+
+}
