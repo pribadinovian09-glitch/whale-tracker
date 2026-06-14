@@ -1,101 +1,175 @@
-# ==========================================
-# SCANNER COIN BARU MENYENTUH MA200 DAILY
-# Binance Spot
-# ==========================================
-
 import requests
 import pandas as pd
-import ta
-from datetime import datetime
+from ta.trend import SMAIndicator
 
-BASE_URL = "https://api.binance.com"
+BINANCE_URL = "https://api.binance.com"
 
-# Ambil semua pair USDT
-exchange_info = requests.get(f"{BASE_URL}/api/v3/exchangeInfo").json()
 
-symbols = [
-    s["symbol"]
-    for s in exchange_info["symbols"]
-    if s["quoteAsset"] == "USDT"
-    and s["status"] == "TRADING"
-]
+def get_symbols():
+    data = requests.get(
+        f"{BINANCE_URL}/api/v3/exchangeInfo",
+        timeout=20
+    ).json()
 
-results = []
+    symbols = []
 
-for symbol in symbols:
+    for s in data["symbols"]:
+        if (
+            s["status"] == "TRADING"
+            and s["quoteAsset"] == "USDT"
+            and "SPOT" in s["permissions"]
+        ):
+            symbols.append(s["symbol"])
+
+    return symbols
+
+
+def get_klines(symbol):
     try:
-        url = f"{BASE_URL}/api/v3/klines"
-        params = {
-            "symbol": symbol,
-            "interval": "1d",
-            "limit": 250
-        }
+        data = requests.get(
+            f"{BINANCE_URL}/api/v3/klines",
+            params={
+                "symbol": symbol,
+                "interval": "1d",
+                "limit": 250
+            },
+            timeout=20
+        ).json()
 
-        data = requests.get(url, params=params, timeout=10).json()
-
-        if len(data) < 200:
-            continue
+        if not isinstance(data, list):
+            return None
 
         df = pd.DataFrame(data)
 
+        df = df.iloc[:, :6]
+
         df.columns = [
-            "open_time","open","high","low","close",
-            "volume","close_time","qav",
-            "trades","tbav","tqav","ignore"
+            "time",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
         ]
 
-        df["close"] = df["close"].astype(float)
-        df["high"] = df["high"].astype(float)
-        df["low"] = df["low"].astype(float)
+        for col in ["open", "high", "low", "close", "volume"]:
+            df[col] = df[col].astype(float)
 
-        # MA200 Daily
-        df["MA200"] = ta.trend.sma_indicator(
-            df["close"],
-            window=200
-        )
+        return df
 
-        last = df.iloc[-1]
+    except:
+        return None
 
-        ma200 = last["MA200"]
 
-        if pd.isna(ma200):
+def fresh_touch_ma200(df):
+
+    if len(df) < 210:
+        return None
+
+    df["ma200"] = SMAIndicator(
+        close=df["close"],
+        window=200
+    ).sma_indicator()
+
+    today = df.iloc[-1]
+    yesterday = df.iloc[-2]
+
+    ma_today = today["ma200"]
+
+    if pd.isna(ma_today):
+        return None
+
+    touch_today = (
+        today["low"] <= ma_today <= today["high"]
+    )
+
+    if not touch_today:
+        return None
+
+    ma_yesterday = yesterday["ma200"]
+
+    touch_yesterday = (
+        yesterday["low"] <= ma_yesterday <= yesterday["high"]
+    )
+
+    if touch_yesterday:
+        return None
+
+    for i in range(-12, -2):
+
+        row = df.iloc[i]
+
+        ma = row["ma200"]
+
+        if pd.isna(ma):
             continue
 
-        high = last["high"]
-        low = last["low"]
-        close = last["close"]
+        if row["low"] <= ma <= row["high"]:
+            return None
 
-        # Menyentuh MA200
-        touched = low <= ma200 <= high
+    distance = abs(
+        today["close"] - ma_today
+    ) / ma_today * 100
 
-        if touched:
+    return {
+        "close": today["close"],
+        "ma200": ma_today,
+        "distance": distance,
+        "volume": today["volume"]
+    }
 
-            distance_pct = abs(close - ma200) / ma200 * 100
+
+def main():
+
+    symbols = get_symbols()
+
+    results = []
+
+    print(f"Scanning {len(symbols)} coins...")
+
+    for symbol in symbols:
+
+        df = get_klines(symbol)
+
+        if df is None:
+            continue
+
+        result = fresh_touch_ma200(df)
+
+        if result:
 
             results.append({
-                "Coin": symbol,
-                "Close": round(close, 6),
-                "MA200": round(ma200, 6),
-                "Distance %": round(distance_pct, 3)
+                "symbol": symbol,
+                **result
             })
 
-    except Exception:
-        pass
+            print(f"FOUND -> {symbol}")
 
-# Urutkan terdekat
-results = sorted(results, key=lambda x: x["Distance %"])
+    results = sorted(
+        results,
+        key=lambda x: x["distance"]
+    )
 
-print("\n===================================")
-print("COIN BARU MENYENTUH MA200 DAILY")
-print("===================================\n")
+    print("\n")
+    print("=" * 100)
+    print("FRESH TOUCH MA200 DAILY")
+    print("=" * 100)
 
-if len(results) == 0:
-    print("Tidak ada coin yang menyentuh MA200 hari ini.")
-else:
+    if not results:
+        print("No coins found.")
+        return
+
     for i, r in enumerate(results[:30], start=1):
+
         print(
-            f"{i:02d}. {r['Coin']:12} "
-            f"Close={r['Close']} "
-            f"MA200={r['MA200']} "
-            f"Dist={r['Distance %']}%"
+            f"{i:02d}. "
+            f"{r['symbol']:12} "
+            f"Close={r['close']:.6f} "
+            f"MA200={r['ma200']:.6f} "
+            f"Distance={r['distance']:.2f}% "
+            f"Volume={r['volume']:.0f}"
         )
+
+
+if __name__ == "__main__":
+    main()
